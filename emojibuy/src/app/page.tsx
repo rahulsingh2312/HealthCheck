@@ -8,7 +8,8 @@ import {
 } from '@/components/ui/dialog';
 
 import data from './demo.json';
-
+import MarketInfo from './MarketInfo';  // Import MarketInfo component
+import AmountInput from './Amountinput';
 interface Token {
   id: string;
   emoji: string;
@@ -78,7 +79,9 @@ const MobileNav = () => (
     } backdrop-filter backdrop-blur-md text-gray-100`}
   >
     <div className="flex justify-between items-center p-4 border-b">
-      <h1 className="text-xl font-bold">Emoji Buy</h1>
+      <h1 className={`${
+      isDarkMode ? 'bg-gray-900/70' : 'bg-white/70 text-black'
+    } text-xl font-bold`}>Emoji Buy</h1>
       <button onClick={() => setShowMobileNav(false)}>
         <X size={24} className="text-gray-400" />
       </button>
@@ -267,7 +270,9 @@ const MobileNav = () => (
     }`}>
        <div className='flex justify-between p-5'>
           
-       <h1 className="text-2xl font-bold">Emoji Buy</h1>
+       <h1 className={`text-2xl ${
+      isDarkMode ? 'bg-gray-900/70' : 'bg-white/70'
+    } font-bold`}>Emoji Buy</h1>
        {/* Mobile Controls */}
            <button onClick={() => setShowMobileNav(true)} className="sm:hidden p-1.5 rounded-lg">
           <Menu size={24} />
@@ -278,8 +283,10 @@ const MobileNav = () => (
       {showMobileNav && <MobileNav />}
 
       {/* Header */}
-      <div className="hidden fixed top-0 left-0 right-0 z-40 p-4 backdrop-blur-md bg-opacity-80 
-        border-b border-gray-700 md:flex justify-between items-center">
+      <div className={`${
+      isDarkMode ? 'bg-gray-900/70' : 'bg-white/70'
+    } hidden fixed top-0 left-0 right-0 z-40 p-4 backdrop-blur-md bg-opacity-80 
+        border-b border-gray-700 md:flex justify-between items-center`}>
         <h1 className="text-2xl font-bold">Emoji Buy</h1>
 
        
@@ -361,13 +368,15 @@ const MobileNav = () => (
             }}
             className="flex flex-col items-center cursor-pointer group"
           >
-            <span className="text-4xl mb-1 transform transition-transform group-hover:scale-110">
+            <span className="text-xl md:text-4xl  mb-1 transform transition-transform group-hover:scale-110">
               {item.emoji}
             </span>
             <span className={`text-xs font-medium ${
               item.change24h >= 0 ? 'text-green-500' : 'text-red-500'
             }`}>
               {item.change24h >= 0 ? '+' : ''}{item.change24h}%
+              <br></br>
+              {item.price}
             </span>
           </div>
         ))}
@@ -391,54 +400,74 @@ const MobileNav = () => (
                 </p>
               </div>
             )}
-            <div className="flex items-center justify-center gap-4 mb-6">
-              <button 
-                onClick={() => setBuyQuantity(prev => Math.max(1, prev - 1))}
-                className="bg-gray-700 px-5 hover:bg-gray-600 p-2 rounded-lg"
-              >
-                -
-              </button>
-              <input
-                type="number"
-                value={buyQuantity}
-                onChange={(e) => setBuyQuantity(Math.max(1, parseInt(e.target.value) || 1))}
-                className="w-20 text-center bg-gray-800 rounded-lg px-4 py-2"
-              />
-              <button 
-                onClick={() => setBuyQuantity(prev => prev + 1)}
-                className="bg-gray-700 px-5 hover:bg-gray-600 p-2 rounded-lg"
-              >
-                +
-              </button>
-            </div>
+           {selectedEmoji && (
+  <div className="table-auto w-full md:ml-5 text-xs mb-6">
+    <div className="table-row">
+      <div className="table-cell text-center p-3 font-medium border border-gray-600">5M</div>
+      <div className="table-cell text-center p-3 font-medium border border-gray-600">1H</div>
+      <div className="table-cell text-center p-3 font-medium border border-gray-600">6H</div>
+      <div className="table-cell text-center p-3 font-medium border border-gray-600">24H</div>
+    </div>
+    <div className="table-row">
+      <div className="table-cell text-center p-3 font-medium border border-gray-600">{selectedEmoji.price}%</div>
+      <div className={`table-cell text-center p-3 font-medium border border-gray-600 ${selectedEmoji.change24h >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+        {selectedEmoji.price}%
+      </div>
+      <div className={`table-cell text-center p-3 font-medium border border-gray-600 ${selectedEmoji.change24h >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+        {selectedEmoji.price}%
+      </div>
+      <div className={`table-cell text-center p-3 font-medium border border-gray-600 ${selectedEmoji.change24h >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+        {selectedEmoji.price}%
+      </div>
+    </div>
+  </div>
+)}
+
+<AmountInput 
+  value={buyQuantity}
+  onChange={(value) => setBuyQuantity(value)}
+/>
             <button 
               onClick={() => selectedEmoji && addToCart(selectedEmoji, buyQuantity)}
-              className="w-full bg-purple-600 hover:bg-purple-700 py-3 rounded-lg font-medium transition-colors"
+              className={`w-full
+                ${
+                  isDarkMode ? 'text-white ' : 'text-white border border-black border-solid'
+                }
+                bg-purple-600 hover:bg-purple-700 py-3 rounded-lg font-medium transition-colors`}
             >
               Add to Cart
             </button>
             <button 
               onClick={() => selectedEmoji && addToCart(selectedEmoji, buyQuantity)}
-              className="w-full bg-green-600 hover:bg-green-700 mt-5 py-3 rounded-lg font-medium transition-colors"
+              className={`w-full
+                ${
+                  isDarkMode ? 'text-white ' : 'text-white border border-black border-solid'
+                }
+                bg-green-600 hover:bg-green-700 mt-3 py-3 rounded-lg font-medium transition-colors`}
             >
               Buy Now
             </button>
                 
             <div className="grid grid-cols-4 justify-center items-center gap-4 mt-5">
-              <button className="flex text-xs items-center border-white py-2 px-1 border-solid border justify-center rounded-lg">
+              <button className={`flex text-xs items-center   py-2 px-1 border-solid border justify-center rounded-lg ${
+      isDarkMode ? 'border-white' : 'border-black'
+    }`}>
                 <ExternalLink className='mr-2' size={13} />
                 DEX
               </button>
-              <button className="flex text-xs items-center justify-center py-2 border-white border-solid border rounded-lg">
-                <Share2 className='mr-2' size={13} />
+              <button className={`flex text-xs items-center   py-2 px-1 border-solid border justify-center rounded-lg ${
+      isDarkMode ? 'border-white' : 'border-black'
+    }`}>                <Share2 className='mr-2' size={13} />
                 X
               </button>
-              <button className="flex text-xs items-center justify-center py-2 border-white border-solid border rounded-lg">
-                <Send className='mr-2' size={13} />
+              <button className={`flex text-xs items-center   py-2 px-1 border-solid border justify-center rounded-lg ${
+      isDarkMode ? 'border-white' : 'border-black'
+    }`}>                <Send className='mr-2' size={13} />
                 tg
               </button>
-              <button className="flex text-xs items-center justify-center py-2 border-white border-solid border rounded-lg">
-                <PawPrint className='mr-2' size={13} />
+              <button className={`flex text-xs items-center   py-2 px-1 border-solid border justify-center rounded-lg ${
+      isDarkMode ? 'border-white' : 'border-black'
+    }`}>                <PawPrint className='mr-2' size={13} />
                 Sell
               </button>
             </div>
@@ -464,19 +493,19 @@ const MobileNav = () => (
                       <span>{item.price}</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <button 
+                      {/* <button 
                         onClick={() => updateCartQuantity(item.id, item.quantity - 1)}
                         className="bg-gray-700 px-4 hover:bg-gray-600 p-1 rounded"
                       >
-                        -
-                      </button>
+                        - */}
+                      {/* </button> */}
                       <span className="w-8 text-center">{item.quantity}</span>
-                      <button 
+                      {/* <button 
                         onClick={() => updateCartQuantity(item.id, item.quantity + 1)}
                         className="bg-gray-700 px-4 hover:bg-gray-600 p-1 rounded"
                       >
                         +
-                      </button>
+                      </button> */}
                       <button 
                         onClick={() => removeFromCart(item.id)}
                         className="ml-2 text-red-500 hover:text-red-400"
@@ -517,7 +546,10 @@ const MobileNav = () => (
             </button>
           </div>
         </DialogContent>
+
       </Dialog>
+      <MarketInfo marketCap={11.13} topgain="🤌" gainerPercentage={104} />
+
     </div>
   );
 };

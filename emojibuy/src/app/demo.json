@@ -4,7 +4,7 @@
         "id": "token1",
         "emoji": "🐕",
         "marketCap": 2780000,
-        "price": "$2.78M",
+        "price": "$2.78 M",
         "volume24h": 156000,
         "change24h": 12.5,
         "type": "animal"
@@ -274,7 +274,7 @@
         "id": "token31",
         "emoji": "🎯",
         "marketCap": 720000,
-        "price": "$720K",
+        "price": "$720 K",
          "volume24h": 15000,
         "change24h": -1.1,
          "type": "animal"
