@@ -1,0 +1,284 @@
+{
+    "tokens": [
+      {
+        "id": "token1",
+        "emoji": "🐕",
+        "marketCap": 2780000,
+        "price": "$2.78M",
+        "volume24h": 156000,
+        "change24h": 12.5,
+        "type": "animal"
+      },
+      {
+        "id": "token2",
+        "emoji": "👨",
+        "marketCap": 1130000,
+        "price": "$1.13M",
+        "volume24h": 89000,
+        "change24h": -3.2,
+        "type": "people"
+      },
+      {
+        "id": "token3",
+        "emoji": "🔒",
+        "marketCap": 1050000,
+        "price": "$1.05M",
+        "volume24h": 67000,
+        "change24h": 5.7,
+        "type": "object"
+      },
+      {
+        "id": "token4",
+        "emoji": "🐈",
+        "marketCap": 435000,
+        "price": "$435K",
+        "volume24h": 23000,
+        "change24h": 1.2,
+        "type": "animal"
+      },
+      {
+        "id": "token5",
+        "emoji": "🌟",
+        "marketCap": 216000,
+        "price": "$216K",
+        "volume24h": 15000,
+        "change24h": -0.8,
+        "type": "nature"
+      },
+      {
+        "id": "token6",
+        "emoji": "🔥",
+        "marketCap": 1980000,
+        "price": "$1.98M",
+        "volume24h": 176000,
+        "change24h": 6.3,
+        "type": "nature"
+      },
+      {
+        "id": "token7",
+        "emoji": "🌊",
+        "marketCap": 450000,
+        "price": "$450K",
+        "volume24h": 39000,
+        "change24h": -1.5,
+        "type": "nature"
+      },
+      {
+        "id": "token8",
+        "emoji": "🦁",
+        "marketCap": 275000,
+        "price": "$275K",
+        "volume24h": 17000,
+        "change24h": 3.1,
+        "type": "animal"
+      },
+      {
+        "id": "token9",
+        "emoji": "👽",
+        "marketCap": 930000,
+        "price": "$930K",
+        "volume24h": 86000,
+        "change24h": -4.6,
+        "type": "people"
+      },
+      {
+        "id": "token10",
+        "emoji": "🚀",
+        "marketCap": 1200000,
+        "price": "$1.20M",
+        "volume24h": 150000,
+        "change24h": 10.2,
+        "type": "object"
+      },
+      {
+        "id": "token11",
+        "emoji": "🌸",
+        "marketCap": 315000,
+        "price": "$315K",
+        "volume24h": 26000,
+        "change24h": 2.7,
+        "type": "nature"
+      },
+      {
+        "id": "token12",
+        "emoji": "🤖",
+        "marketCap": 890000,
+        "price": "$890K",
+        "volume24h": 78000,
+        "change24h": -1.3,
+        "type": "people"
+      },
+      {
+        "id": "token13",
+        "emoji": "📀",
+        "marketCap": 720000,
+        "price": "$720K",
+        "volume24h": 45000,
+        "change24h": 1.8,
+        "type": "object"
+      },
+      {
+        "id": "token14",
+        "emoji": "🦄",
+        "marketCap": 510000,
+        "price": "$510K",
+        "volume24h": 33000,
+        "change24h": -2.1,
+        "type": "animal"
+      },
+      {
+        "id": "token15",
+        "emoji": "🌞",
+        "marketCap": 680000,
+        "price": "$680K",
+        "volume24h": 42000,
+        "change24h": 7.5,
+        "type": "nature"
+      },
+      {
+        "id": "token16",
+        "emoji": "👑",
+        "marketCap": 800000,
+        "price": "$800K",
+        "volume24h": 62000,
+        "change24h": 4.9,
+        "type": "object"
+      },
+      {
+        "id": "token17",
+        "emoji": "🍀",
+        "marketCap": 350000,
+        "price": "$350K",
+        "volume24h": 28000,
+        "change24h": -0.9,
+        "type": "nature"
+      },
+      {
+        "id": "token18",
+        "emoji": "💎",
+        "marketCap": 640000,
+        "price": "$640K",
+        "volume24h": 53000,
+        "change24h": 2.6,
+        "type": "object"
+      },
+      {
+        "id": "token19",
+        "emoji": "👀",
+        "marketCap": 450000,
+        "price": "$450K",
+        "volume24h": 29000,
+        "change24h": 3.4,
+        "type": "people"
+      },
+      {
+        "id": "token20",
+        "emoji": "⚡",
+        "marketCap": 950000,
+        "price": "$950K",
+        "volume24h": 76000,
+        "change24h": 8.5,
+        "type": "nature"
+      },
+      {
+        "id": "token21",
+        "emoji": "💀",
+        "marketCap": 310000,
+        "price": "$310K",
+        "volume24h": 25000,
+        "change24h": -2.5,
+        "type": "people"
+      },
+      {
+        "id": "token22",
+        "emoji": "🦊",
+        "marketCap": 290000,
+        "price": "$290K",
+        "volume24h": 18000,
+        "change24h": 1.1,
+        "type": "animal"
+      },
+      {
+        "id": "token23",
+        "emoji": "🌍",
+        "marketCap": 740000,
+        "price": "$740K",
+        "volume24h": 57000,
+        "change24h": 5.2,
+        "type": "nature"
+      },
+      {
+        "id": "token24",
+        "emoji": "🔫",
+        "marketCap": 430000,
+        "price": "$430K",
+        "volume24h": 32000,
+        "change24h": -1.7,
+        "type": "object"
+      },
+      {
+        "id": "token25",
+        "emoji": "🐉",
+        "marketCap": 510000,
+        "price": "$510K",
+        "volume24h": 34000,
+        "change24h": 3.0,
+        "type": "animal"
+      },
+      {
+        "id": "token26",
+        "emoji": "🎩",
+        "marketCap": 610000,
+        "price": "$610K",
+        "volume24h": 45000,
+        "change24h": 4.6,
+        "type": "object"
+      },
+      {
+        "id": "token27",
+        "emoji": "🌈",
+        "marketCap": 470000,
+        "price": "$470K",
+        "volume24h": 36000,
+        "change24h": 2.2,
+        "type": "nature"
+      },
+      {
+        "id": "token28",
+        "emoji": "🍎",
+        "marketCap": 260000,
+        "price": "$260K",
+        "volume24h": 23000,
+        "change24h": -3.8,
+        "type": "nature"
+      },
+      {
+        "id": "token29",
+        "emoji": "👒",
+        "marketCap": 560000,
+        "price": "$560K",
+        "volume24h": 49000,
+        "change24h": 6.7,
+        "type": "object"
+      },
+      {
+        "id": "token30",
+        "emoji": "🦐",
+        "marketCap": 210000,
+        "price": "$210K",
+        "volume24h": 15000,
+        "change24h": -1.1,
+        "type": "animal"
+      },
+      {
+        "id": "token31",
+        "emoji": "🎯",
+        "marketCap": 720000,
+        "price": "$720K",
+         "volume24h": 15000,
+        "change24h": -1.1,
+         "type": "animal"
+        }
+    ]
+}
+  
