@@ -9,7 +9,7 @@ import {
 
 import data from './demo.json';
 import MarketInfo from './MarketInfo';  // Import MarketInfo component
-import AmountInput from './Amountinput';
+import AmountInput from './Amount';
 interface Token {
   id: string;
   emoji: string;
