@@ -3,10 +3,11 @@ import { ChevronDown } from 'lucide-react';
 
 interface AmountInputProps {
   value: number;
+  isdarkmode: boolean;
   onChange: (value: number) => void;
 }
 
-const AmountInput: React.FC<AmountInputProps> = ({ value, onChange }) => {
+const AmountInput: React.FC<AmountInputProps> = ({isdarkmode, value, onChange }) => {
   const [currency, setCurrency] = useState('SOL');
   
   const handleInputChange = (e:any) => {
@@ -27,16 +28,17 @@ const AmountInput: React.FC<AmountInputProps> = ({ value, onChange }) => {
         value={value}
         onChange={handleInputChange}
         placeholder="0.000"
-        className="w-full text-white bg-gray-800 rounded-l-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500"
+        className={`${isdarkmode?"text-white bg-gray-800 ":"text-black bg-gray-100 "}  w-full 
+         rounded-l-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-purple-500`}
       />
       <div className="relative">
         <select
           value={currency}
           onChange={(e) => setCurrency(e.target.value)}
-          className="text-white bg-gray-700 rounded-r-lg px-4 py-2 appearance-none focus:outline-none focus:ring-2 focus:ring-purple-500 cursor-pointer"
+          className={`${isdarkmode?"text-white bg-gray-800 ":"text-black bg-gray-100 "} rounded-r-lg px-4 py-3 appearance-none focus:outline-none focus:ring-2 focus:ring-purple-500 cursor-pointer`}
         >
-          <option value="SOL">SOL</option>
-          <option value="USDC">USDC</option>
+          <option value="SOL">SOL &nbsp; &nbsp;</option>
+          {/* <option value="USDC">USDC</option> */}
         </select>
         <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none" size={16} />
       </div>

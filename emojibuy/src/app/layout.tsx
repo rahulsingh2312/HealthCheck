@@ -1,7 +1,10 @@
+
 import type { Metadata } from "next";
 import localFont from "next/font/local";
 import "./globals.css";
 
+
+// import '@solana/wallet-adapter-react-ui/styles.css';
 const geistSans = localFont({
   src: "./fonts/GeistVF.woff",
   variable: "--font-geist-sans",
@@ -18,6 +21,7 @@ export const metadata: Metadata = {
   description: "Ape your favorite emoji",
 };
 
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -28,7 +32,12 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        {children}
+
+
+          {children}
+       
+
+       
       </body>
     </html>
   );

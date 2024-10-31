@@ -1,11 +1,28 @@
 'use client';
 import React, { useState, useEffect } from 'react';
 import {
-  Search, Filter, Plus, Sun, Moon, ShoppingCart, Share2, ExternalLink, Send, PawPrint, Menu , X
+  Search, Filter, Plus, Sun, Moon, ShoppingCart, Share2, ExternalLink, Send, PawPrint, Menu, X, MousePointer2
 } from 'lucide-react';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
+import { WalletMultiButton } from "@tiplink/wallet-adapter-react-ui";
+import '@solana/wallet-adapter-react-ui/styles.css';
+
+import { WalletProvider } from '@solana/wallet-adapter-react';
+
+import { TipLinkWalletAdapter } from "@tiplink/wallet-adapter";
+
+import { WalletModalProvider, TipLinkWalletAutoConnectV2 } from '@tiplink/wallet-adapter-react-ui';
+
+const wallets = [
+  new TipLinkWalletAdapter({
+    title: "Emoji Buy",
+    clientId: "f7d3033a-a221-42e2-b8cb-0b73c1bc3c27",
+    theme: "light",
+    hideDraggableWidget: false
+  }),
+];
 
 import data from './demo.json';
 import MarketInfo from './MarketInfo';  // Import MarketInfo component
@@ -41,8 +58,12 @@ const calculateYPosition = (marketCap: number, maxMarketCap: number) => {
 };
 
 const EmojiRace = () => {
-  const [isDarkMode, setIsDarkMode] = useState(true);
+  const [isDarkMode, setIsDarkMode] = useState(false);
   const [selectedEmoji, setSelectedEmoji] = useState<Token | null>(null);
+  const [selectedEmojis, setSelectedEmojis] = useState<Token[]>([]);
+  const [isSelectionMode, setIsSelectionMode] = useState(false);
+  const [showBulkBuyModal, setShowBulkBuyModal] = useState(false);
+  const [totalSolAmount, setTotalSolAmount] = useState(1);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showBuyModal, setShowBuyModal] = useState(false);
   const [showCartModal, setShowCartModal] = useState(false);
@@ -66,6 +87,26 @@ const EmojiRace = () => {
   };
 
 
+ // Calculate amount per emoji
+ const amountPerEmoji = selectedEmojis.length > 0 ? totalSolAmount / selectedEmojis.length : 0;
+
+ const toggleEmojiSelection = (emoji: Token) => {
+   if (isSelectionMode) {
+     setSelectedEmojis(prev => 
+       prev.find(e => e.id === emoji.id)
+         ? prev.filter(e => e.id !== emoji.id)
+         : [...prev, emoji]
+     );
+   }
+ };
+
+ const handleBulkBuy = () => {
+   // Implement your bulk buy logic here
+   console.log('Buying', selectedEmojis.length, 'emojis with', amountPerEmoji, 'SOL each');
+   setShowBulkBuyModal(false);
+   setSelectedEmojis([]);
+   setIsSelectionMode(false);
+ };
 
 
 
@@ -125,7 +166,7 @@ const MobileNav = () => (
 
         <button
           onClick={() => setShowCreateModal(true)}
-          className="flex items-center justify-center gap-3 p-2 rounded-lg w-full bg-purple-600 text-white"
+          className="flex items-center justify-center gap-3 p-2 rounded-lg w-full bg-custom-green text-white"
         >
           <Plus size={18} />
         </button>
@@ -265,6 +306,10 @@ const MobileNav = () => (
   );
 
   return (
+    <WalletProvider wallets={wallets} autoConnect>
+    {typeof window !== 'undefined' && (
+      <TipLinkWalletAutoConnectV2 isReady query={new URLSearchParams(window.location.search)}>
+        <WalletModalProvider>
     <div className={`min-h-screen transition-colors duration-200 ${
       isDarkMode ? 'bg-gray-900 text-white' : 'bg-gray-50 text-gray-900'
     }`}>
@@ -293,7 +338,27 @@ const MobileNav = () => (
 
         {/* Desktop Controls */}
         <div className="hidden md:flex items-center gap-3">
+        <button
+                onClick={() => setIsSelectionMode(!isSelectionMode)}
+                className={`fixed bottom-4 top-24 right-4 z-50 px-4 py-6 rounded-full ${
+                  isSelectionMode 
+                    ? 'bg-custom-green text-white' 
+                    : isDarkMode ? 'bg-gray-700' : 'bg-gray-200'
+                } flex items-center gap-2`}
+              >
+                <MousePointer2 size={18} />
+                {isSelectionMode ? 'Exit Selection' : 'Select Emojis'}
+              </button>
+        <WalletMultiButton
+              style={{
+                background: "#A9F605",
+                color: "black",
+                borderRadius: "180px",
+              }}
+            /> 
+            
           <div className="relative">
+       
             <input
               type="text"
               value={searchTerm}
@@ -323,7 +388,7 @@ const MobileNav = () => (
           >
             {isDarkMode ? <Sun size={18} /> : <Moon size={18} />}
           </button>
-
+{/* 
           <button
             onClick={() => setShowCartModal(true)}
             className={`p-1.5 rounded-lg relative ${
@@ -332,15 +397,15 @@ const MobileNav = () => (
           >
             <ShoppingCart size={18} />
             {cart.length > 0 && (
-              <span className="absolute -top-1 -right-1 bg-purple-600 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center">
+              <span className="absolute -top-1 -right-1 bg-custom-green text-white text-xs rounded-full w-4 h-4 flex items-center justify-center">
                 {cart.length}
               </span>
             )}
-          </button>
+          </button> */}
 
           <button
             onClick={() => setShowCreateModal(true)}
-            className="bg-purple-600 hover:bg-purple-700 px-3 py-1.5 rounded-lg flex items-center gap-1"
+            className="bg-custom-green text-white hover:bg-purple-700 px-3 py-1.5 rounded-lg flex items-center gap-1"
           >
             <Plus size={18} />
             Add
@@ -352,7 +417,7 @@ const MobileNav = () => (
       {showFilters && <FilterPanel />}
 
       {/* Emoji Canvas */}
-      <div className="relative pt-16 h-screen overflow-hidden">
+      {/* <div className="relative pt-16 h-screen overflow-hidden">
         {filteredData.map((item) => (
           <div
             key={item.id}
@@ -372,7 +437,7 @@ const MobileNav = () => (
               {item.emoji}
             </span>
             <span className={`text-xs font-medium ${
-              item.change24h >= 0 ? 'text-green-500' : 'text-red-500'
+              item.change24h >= 0 ? 'text-custom-green' : 'text-red-500'
             }`}>
               {item.change24h >= 0 ? '+' : ''}{item.change24h}%
               <br></br>
@@ -380,7 +445,103 @@ const MobileNav = () => (
             </span>
           </div>
         ))}
-      </div>
+      </div> */}
+
+       {/* Emoji Grid */}
+       <div className="container mx-auto px-4 pt-24">
+                <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-4">
+                  {filteredData.map((item) => (
+                    <div
+                      key={item.id}
+                      onClick={() => {
+                        if (isSelectionMode) {
+                          toggleEmojiSelection(item);
+                        } else {
+                          setSelectedEmoji(item);
+                          setShowBuyModal(true);
+                        }
+                      }}
+                                            className={`relative cursor-pointer p-4 rounded-lg ${
+                        isDarkMode ? 'hover:bg-gray-800' : 'hover:bg-gray-100'
+                      } transition-all duration-200 ${
+                        selectedEmojis.find(e => e.id === item.id) 
+                          ? 'ring-2 ring-custom-green bg-purple-100/10' 
+                          : ''
+                      }`}
+                    >
+                      <div className="absolute top-2 right-2">
+                        {selectedEmojis.find(e => e.id === item.id) && (
+                          <div className="bg-custom-green text-white w-5 h-5 rounded-full flex items-center justify-center text-xs">
+                            ✓
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex flex-col items-center">
+                        <span className="text-4xl mb-2">{item.emoji}</span>
+                        <span className="text-sm font-medium">{item.price}</span>
+                        <span className={`text-xs ${
+                          item.change24h >= 0 ? 'text-custom-green' : 'text-red-500'
+                        }`}>
+                          {item.change24h >= 0 ? '+' : ''}{item.change24h}%
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Bulk Buy Modal */}
+              <Dialog open={showBulkBuyModal} onOpenChange={setShowBulkBuyModal}>
+                <DialogContent className="sm:max-w-md">
+                  <DialogHeader>
+                    <DialogTitle>Bulk Buy Emojis</DialogTitle>
+                  </DialogHeader>
+                  <div className="p-6">
+                    <div className="mb-6">
+                      <label className="block text-sm font-medium mb-2">
+                        Total SOL Amount
+                      </label>
+                      <input
+                        type="number"
+                        value={totalSolAmount}
+                        onChange={(e) => setTotalSolAmount(Number(e.target.value))}
+                        className={`w-full  px-3 py-3 rounded-lg ${isDarkMode? "bg-gray-900 text-white" : "bg-gray-100 text-black" }`}
+                        min="0.1"
+                        step="0.1"
+                      />
+                      <p className="mt-2 text-sm text-gray-400">
+                        {amountPerEmoji.toFixed(2)} SOL per emoji
+                      </p>
+                    </div>
+
+                    <div className="grid grid-cols-4 gap-2 mb-6">
+                      {selectedEmojis.map((emoji) => (
+                        <div key={emoji.id} className={` rounded-lg text-center p-2 ${isDarkMode? "bg-gray-900 text-white" : "bg-gray-100 text-black" }`}>
+                          <span className="text-2xl">{emoji.emoji}</span>
+                        </div>
+                      ))}
+                    </div>
+
+                    <button
+                      onClick={handleBulkBuy}
+                      className="w-full bg-custom-green hover:bg-purple-700 text-white py-3 rounded-lg font-medium"
+                    >
+                      Buy {selectedEmojis.length} Emojis
+                    </button>
+                  </div>
+                </DialogContent>
+              </Dialog>
+
+              {/* Show floating action button when emojis are selected */}
+              {selectedEmojis.length > 0 && (
+                <button
+                  onClick={() => setShowBulkBuyModal(true)}
+                  className="fixed bottom-20 right-4 z-50 px-6 py-3 bg-custom-green text-white rounded-full shadow-lg flex items-center gap-2"
+                >
+                  <ShoppingCart size={18} />
+                  Buy {selectedEmojis.length} Selected
+                </button>
+              )}
 
       {/* Buy Token Modal */}
       <Dialog open={showBuyModal} onOpenChange={setShowBuyModal}>
@@ -394,7 +555,7 @@ const MobileNav = () => (
                 <span className="text-6xl mb-4 block">{selectedEmoji.emoji}</span>
                 <p className="text-xl font-medium mb-2">{selectedEmoji.price}</p>
                 <p className={`text-sm ${
-                  selectedEmoji.change24h >= 0 ? 'text-green-500' : 'text-red-500'
+                  selectedEmoji.change24h >= 0 ? 'text-custom-green' : 'text-red-500'
                 }`}>
                   {selectedEmoji.change24h >= 0 ? '+' : ''}{selectedEmoji.change24h}%
                 </p>
@@ -410,13 +571,13 @@ const MobileNav = () => (
     </div>
     <div className="table-row">
       <div className="table-cell text-center p-3 font-medium border border-gray-600">{selectedEmoji.price}%</div>
-      <div className={`table-cell text-center p-3 font-medium border border-gray-600 ${selectedEmoji.change24h >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+      <div className={`table-cell text-center p-3 font-medium border border-gray-600 ${selectedEmoji.change24h >= 0 ? 'text-custom-green' : 'text-red-500'}`}>
         {selectedEmoji.price}%
       </div>
-      <div className={`table-cell text-center p-3 font-medium border border-gray-600 ${selectedEmoji.change24h >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+      <div className={`table-cell text-center p-3 font-medium border border-gray-600 ${selectedEmoji.change24h >= 0 ? 'text-custom-green' : 'text-red-500'}`}>
         {selectedEmoji.price}%
       </div>
-      <div className={`table-cell text-center p-3 font-medium border border-gray-600 ${selectedEmoji.change24h >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+      <div className={`table-cell text-center p-3 font-medium border border-gray-600 ${selectedEmoji.change24h >= 0 ? 'text-custom-green' : 'text-red-500'}`}>
         {selectedEmoji.price}%
       </div>
     </div>
@@ -424,26 +585,27 @@ const MobileNav = () => (
 )}
 
 <AmountInput 
+isdarkmode={isDarkMode}
   value={buyQuantity}
   onChange={(value) => setBuyQuantity(value)}
 />
-            <button 
+            {/* <button 
               onClick={() => selectedEmoji && addToCart(selectedEmoji, buyQuantity)}
               className={`w-full
                 ${
                   isDarkMode ? 'text-white ' : 'text-white border border-black border-solid'
                 }
-                bg-purple-600 hover:bg-purple-700 py-3 rounded-lg font-medium transition-colors`}
+                bg-custom-green hover:bg-purple-700 py-3 rounded-lg font-medium transition-colors`}
             >
               Add to Cart
-            </button>
+            </button> */}
             <button 
               onClick={() => selectedEmoji && addToCart(selectedEmoji, buyQuantity)}
               className={`w-full
                 ${
-                  isDarkMode ? 'text-white ' : 'text-white border border-black border-solid'
+                  isDarkMode ? 'text-white ' : 'text-white border '
                 }
-                bg-green-600 hover:bg-green-700 mt-3 py-3 rounded-lg font-medium transition-colors`}
+                bg-custom-green hover:bg-green-700  py-3 rounded-lg font-medium transition-colors`}
             >
               Buy Now
             </button>
@@ -488,18 +650,18 @@ const MobileNav = () => (
               <div className="space-y-4">
                 {cart.map((item) => (
                   <div key={item.id} className="flex items-center justify-between gap-4 p-3 bg-gray-800 rounded-lg">
-                    <div className="flex items-center gap-3">
+                    <div className="flex text-white items-center gap-3">
                       <span className="text-2xl">{item.emoji}</span>
                       <span>{item.price}</span>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex  items-center gap-2">
                       {/* <button 
                         onClick={() => updateCartQuantity(item.id, item.quantity - 1)}
                         className="bg-gray-700 px-4 hover:bg-gray-600 p-1 rounded"
                       >
                         - */}
                       {/* </button> */}
-                      <span className="w-8 text-center">{item.quantity}</span>
+                      <span className="w-8 text-white text-center">{item.quantity}</span>
                       {/* <button 
                         onClick={() => updateCartQuantity(item.id, item.quantity + 1)}
                         className="bg-gray-700 px-4 hover:bg-gray-600 p-1 rounded"
@@ -508,14 +670,14 @@ const MobileNav = () => (
                       </button> */}
                       <button 
                         onClick={() => removeFromCart(item.id)}
-                        className="ml-2 text-red-500 hover:text-red-400"
+                        className="ml-2  text-red-500 hover:text-red-400"
                       >
                         ×
                       </button>
                     </div>
                   </div>
                 ))}
-                <button className="w-full bg-purple-600 hover:bg-purple-700 py-3 rounded-lg font-medium mt-6 transition-colors">
+                <button className="w-full text-white bg-custom-green hover:bg-purple-700 py-3 rounded-lg font-medium mt-6 transition-colors">
                   Checkout
                 </button>
               </div>
@@ -541,7 +703,7 @@ const MobileNav = () => (
               placeholder="Initial price..."
               className="w-full bg-gray-800 rounded-lg px-4 py-2 mb-4"
             />
-            <button className="w-full bg-purple-600 hover:bg-purple-700 py-3 rounded-lg font-medium transition-colors">
+            <button className="w-full bg-custom-green hover:bg-purple-700 py-3 rounded-lg font-medium transition-colors">
               Create Token
             </button>
           </div>
@@ -551,6 +713,11 @@ const MobileNav = () => (
       <MarketInfo marketCap={11.13} topgain="🤌" gainerPercentage={104} />
 
     </div>
+    </WalletModalProvider>
+      </TipLinkWalletAutoConnectV2>
+    )}
+  </WalletProvider>
+
   );
 };
 
