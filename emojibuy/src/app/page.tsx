@@ -144,7 +144,7 @@ const MobileNav = () => (
         {/* Dark Mode Toggle */}
         <button
           onClick={() => setIsDarkMode(!isDarkMode)}
-          className="flex items-center gap-3 justify-center p-2 rounded-lg w-full bg-gray-800 text-white"
+          className="flex py-3  items-center gap-3 justify-center p-2 rounded-lg w-full bg-gray-800 text-white"
         >
             {isDarkMode ? <Sun size={18} /> : <Moon size={18} />}
             </button>
@@ -156,13 +156,13 @@ const MobileNav = () => (
           <Filter size={18} />
         </button>
 
-        <button
+        {/* <button
           onClick={() => setShowCartModal(true)}
           className="flex items-center justify-center gap-3 p-2 rounded-lg w-full bg-gray-800 text-white"
         >
           <ShoppingCart size={18} />
           ({cart.length})
-        </button>
+        </button> */}
 
         <button
           onClick={() => setShowCreateModal(true)}
@@ -313,20 +313,42 @@ const MobileNav = () => (
     <div className={`min-h-screen transition-colors duration-200 ${
       isDarkMode ? 'bg-gray-900 text-white' : 'bg-gray-50 text-gray-900'
     }`}>
-       <div className='flex justify-between p-5'>
+       <div className='flex items-center justify-between p-5'>
           
        <h1 className={`text-2xl ${
       isDarkMode ? 'bg-gray-900/70' : 'bg-white/70'
     } font-bold`}>Emoji Buy</h1>
+
+<WalletMultiButton
+              style={{
+                width: "110px",
+                fontSize: "9px",
+                height: "40px",
+                background: "#A9F605",
+                color: "black",
+                borderRadius: "180px",
+              }}
+            /> 
        {/* Mobile Controls */}
            <button onClick={() => setShowMobileNav(true)} className="sm:hidden p-1.5 rounded-lg">
           <Menu size={24} />
         </button>
       </div>
-
+      {!showMobileNav &&  <div>  <button
+                onClick={() => setIsSelectionMode(!isSelectionMode)}
+                className={` bottom-24 text-xs fixed right-4 z-50 px-3 py-2 rounded-full ${
+                  isSelectionMode 
+                    ? 'bg-custom-green text-white' 
+                    : isDarkMode ? 'bg-gray-700' : 'bg-gray-200'
+                } flex items-center gap-1`}
+              >
+                <MousePointer2 size={18} />
+                {isSelectionMode ? 'Exit Selection' : 'Select Emojis'}
+              </button> 
+              </div> }
       {/* Render Mobile Navigation if active */}
       {showMobileNav && <MobileNav />}
-
+   
       {/* Header */}
       <div className={`${
       isDarkMode ? 'bg-gray-900/70' : 'bg-white/70'
@@ -334,10 +356,6 @@ const MobileNav = () => (
         border-b border-gray-700 md:flex justify-between items-center`}>
         <h1 className="text-2xl font-bold">Emoji Buy</h1>
 
-       
-
-        {/* Desktop Controls */}
-        <div className="hidden md:flex items-center gap-3">
         <button
                 onClick={() => setIsSelectionMode(!isSelectionMode)}
                 className={`fixed bottom-4 top-24 right-4 z-50 px-4 py-6 rounded-full ${
@@ -349,6 +367,10 @@ const MobileNav = () => (
                 <MousePointer2 size={18} />
                 {isSelectionMode ? 'Exit Selection' : 'Select Emojis'}
               </button>
+
+        {/* Desktop Controls */}
+        <div className="hidden md:flex items-center gap-3">
+    
         <WalletMultiButton
               style={{
                 background: "#A9F605",
@@ -448,7 +470,7 @@ const MobileNav = () => (
       </div> */}
 
        {/* Emoji Grid */}
-       <div className="container mx-auto px-4 pt-24">
+       <div className="container mx-auto px-4 md:pt-24">
                 <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-4">
                   {filteredData.map((item) => (
                     <div
