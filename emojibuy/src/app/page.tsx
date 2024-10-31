@@ -336,7 +336,7 @@ const MobileNav = () => (
       </div>
       {!showMobileNav &&  <div>  <button
                 onClick={() => setIsSelectionMode(!isSelectionMode)}
-                className={` bottom-24 text-xs fixed right-4 z-50 px-3 py-2 rounded-full ${
+                className={` bottom-24 text-xs fixed md:hidden right-4 z-50 px-3 py-2 rounded-full ${
                   isSelectionMode 
                     ? 'bg-custom-green text-white' 
                     : isDarkMode ? 'bg-gray-700' : 'bg-gray-200'
