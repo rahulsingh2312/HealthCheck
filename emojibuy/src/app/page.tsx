@@ -92,7 +92,7 @@ interface TokenDetails {
 // Token Configuration
 const TOKEN_CONFIG = [
   {
-    id: "Ayy1QvG5vR6nJ9fdijWWTrvNmjVfEhGGoQrX9nhZ6Dg3",
+    id: "SENDdRQtYMWaQrBroBrJ2Q53fgVuq95CV9UPGEvpCxa",
     emoji: "🐕",
     type: "animal"
   },
@@ -198,87 +198,96 @@ const EmojiRace = () => {
   }, []);
 
 
+  const toggleEmojiSelection = (token: Token) => {
+    setSelectedEmojis(prev => 
+      prev.some(e => e.id === token.id)
+        ? prev.filter(e => e.id !== token.id)
+        : [...prev, token]
+    );
+  };
+  
   const handleTokenSelect = (token: TokenDetails) => {
     setSelectedToken(token);
     setShowBuyModal(true);
   };
-
   const TokenDetailsTable = () => {
     if (!selectedToken) return null;
-
+  
     return (
-      <div className="space-y-4">
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <h3 className="font-semibold">Basic Info</h3>
-            <table className="w-full text-sm">
-              <tbody>
-                <tr>
-                  <td className="font-medium">Price:</td>
-                  <td>{selectedToken.price}</td>
-                </tr>
-                <tr>
-                  <td className="font-medium">Type:</td>
-                  <td>{selectedToken.type}</td>
-                </tr>
-                <tr>
-                  <td className="font-medium">Confidence:</td>
-                  <td>{selectedToken.extraInfo.confidenceLevel}</td>
-                </tr>
-              </tbody>
-            </table>
+      <div className="space-y-4 text-xs">
+        {/* Basic Info Section */}
+        <div className="bg-gray-100 dark:bg-gray-800 rounded-lg p-4">
+          <h3 className="text-xs font-semibold mb-3 border-b pb-2 dark:border-gray-700">
+            Basic Information
+          </h3>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="flex justify-between">
+              <span className="font-medium text-gray-600 text-xs dark:text-gray-300">Price:</span>
+              <span className="text-xs font-bold">{selectedToken.price}</span>
+            </div>
+        
+            <div className="flex justify-between">
+              <span className="font-medium text-gray-600 text-xs dark:text-gray-300">Confidence:</span>
+              <span className='text-xs'>{selectedToken.extraInfo.confidenceLevel}</span>
+            </div>
           </div>
-
-          <div>
-            <h3 className="font-semibold">Market Depth</h3>
+        </div>
+  
+        {/* Market Depth Section */}
+        <div className="bg-gray-100 dark:bg-gray-800 rounded-lg p-4">
+          <h3 className="text-xs font-semibold mb-3 border-b pb-2 dark:border-gray-700">
+            Market Depth
+          </h3>
+          <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr>
-                  <th>Size</th>
-                  <th>Buy Impact</th>
-                  <th>Sell Impact</th>
+                <tr className="border-b text-xs dark:border-gray-700">
+                  <th className="py-2 text-xs text-left">Metric</th>
+                  <th className="py-2 text-xs text-right">Buy Impact</th>
+                  <th className="py-2 text-xs text-right">Sell Impact</th>
                 </tr>
               </thead>
               <tbody>
-                <tr>
-                  <td>10</td>
-                  <td>{selectedToken.extraInfo.depth.buyPriceImpactRatio.depth[10]}</td>
-                  <td>{selectedToken.extraInfo.depth.sellPriceImpactRatio.depth[10]}</td>
-                </tr>
-                <tr>
-                  <td>100</td>
-                  <td>{selectedToken.extraInfo.depth.buyPriceImpactRatio.depth[100]}</td>
-                  <td>N/A</td>
-                </tr>
-                <tr>
-                  <td>1000</td>
-                  <td>{selectedToken.extraInfo.depth.buyPriceImpactRatio.depth[1000]}</td>
-                  <td>N/A</td>
-                </tr>
+                {[10].map((size) => (
+                  <tr key={size} className="border-b last:border-b-0 dark:border-gray-700">
+                    <td className="py-2 font-medium text-xs">Size {size}</td>
+                    <td className="py-2 text-xs text-right text-green-600 dark:text-green-400">
+                    {selectedToken.extraInfo.depth.buyPriceImpactRatio.depth[size as 10 | 100 | 1000]?.toFixed(3) || 'not enough traded'}
+                    </td>
+                    <td className="py-2 text-xs text-right text-red-600 dark:text-red-400">
+                      {selectedToken.extraInfo.depth.sellPriceImpactRatio.depth[size as 10 | 100 | 1000]?.toFixed(3) || 'not enough traded'}
+                    </td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>
         </div>
-
-        <div>
-          <h3 className="font-semibold">Quoted Prices</h3>
-          <table className="w-full text-sm">
-            <tbody>
-              <tr>
-                <td className="font-medium">Buy Price:</td>
-                <td>{selectedToken.extraInfo.quotedPrice.buyPrice}</td>
-              </tr>
-              <tr>
-                <td className="font-medium">Sell Price:</td>
-                <td>{selectedToken.extraInfo.quotedPrice.sellPrice}</td>
-              </tr>
-              <tr>
-                <td className="font-medium">Buy Timestamp:</td>
-                <td>{new Date(selectedToken.extraInfo.quotedPrice.buyAt * 1000).toLocaleString()}</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
+  
+        {/* Quoted Prices Section */}
+        {/* <div className="bg-gray-100 dark:bg-gray-800 rounded-lg p-4">
+          <h3 className="text-lg font-semibold mb-3 border-b pb-2 dark:border-gray-700">
+            Last Traded Prices
+          </h3>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="flex justify-between">
+              <span className="font-medium text-gray-600 dark:text-gray-300">Buy:</span>
+              <span className="text-green-600 dark:text-green-400">
+                {parseFloat(selectedToken.extraInfo.quotedPrice.buyPrice).toFixed(3) || 'not enough traded'}
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span className="font-medium text-gray-600 dark:text-gray-300">Sell:</span>
+              <span className="text-red-600 dark:text-red-400">
+              {parseFloat(selectedToken.extraInfo.quotedPrice.sellPrice).toFixed(3) || 'not enough traded'}
+              </span>
+            </div>
+            <div className="col-span-2 mt-2 text-sm text-gray-500 dark:text-gray-400">
+              <span className="font-medium">Buy Timestamp:</span>{' '}
+              {new Date(selectedToken.extraInfo.quotedPrice.buyAt * 1000).toLocaleString()}
+            </div>
+          </div>
+        </div> */}
       </div>
     );
   };
@@ -298,15 +307,7 @@ const EmojiRace = () => {
  // Calculate amount per emoji
  const amountPerEmoji = selectedEmojis.length > 0 ? totalSolAmount / selectedEmojis.length : 0;
 
- const toggleEmojiSelection = (emoji: Token) => {
-   if (isSelectionMode) {
-     setSelectedEmojis(prev => 
-       prev.find(e => e.id === emoji.id)
-         ? prev.filter(e => e.id !== emoji.id)
-         : [...prev, emoji]
-     );
-   }
- };
+
 
  const handleBulkBuy = () => {
    // Implement your bulk buy logic here
@@ -644,103 +645,52 @@ const MobileNav = () => (
         </div>
       </div>
 
-      {/* Filter Panel */}
-      {showFilters && <FilterPanel />}
+   {/* Filter Panel */}
+{showFilters && <FilterPanel />}
 
-      {/* Emoji Canvas */}
-      {/* <div className="relative pt-16 h-screen overflow-hidden">
-        {filteredData.map((item) => (
-          <div
-            key={item.id}
-            style={{
-              position: 'absolute',
-              left: `${item.xPos}%`,
-              top: `${item.yPos}%`,
-              transform: 'translate(-50%, -50%)'
-            }}
-            onClick={() => {
-              setSelectedEmoji(item);
-              setShowBuyModal(true);
-            }}
-            className="flex flex-col items-center cursor-pointer group"
-          >
-            <span className="text-xl md:text-4xl  mb-1 transform transition-transform group-hover:scale-110">
-              {item.emoji}
-            </span>
-            <span className={`text-xs font-medium ${
-              item.change24h >= 0 ? 'text-custom-green' : 'text-red-500'
-            }`}>
-              {item.change24h >= 0 ? '+' : ''}{item.change24h}%
-              <br></br>
-              {item.price}
-            </span>
-          </div>
-        ))}
-      </div> */}
-
-       {/* Emoji Grid */}
-       {/* <div className="container mx-auto px-4 md:pt-24">
-                <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-4">
-                  {filteredData.map((item) => (
-                    <div
-                      key={item.id}
-                      onClick={() => {
-                        if (isSelectionMode) {
-                          // toggleEmojiSelection(item);
-                        } else {
-                          // setSelectedEmoji(item);
-                          setShowBuyModal(true);
-                        }
-                      }}
-                                            className={`relative cursor-pointer p-4 rounded-lg ${
-                        isDarkMode ? 'hover:bg-gray-800' : 'hover:bg-gray-100'
-                      } transition-all duration-200 ${
-                        selectedEmojis.find(e => e.id === item.id) 
-                          ? 'ring-2 ring-custom-green bg-purple-100/10' 
-                          : ''
-                      }`}
-                    >
-                      <div className="absolute top-2 right-2">
-                        {selectedEmojis.find(e => e.id === item.id) && (
-                          <div className="bg-custom-green text-white w-5 h-5 rounded-full flex items-center justify-center text-xs">
-                            ✓
-                          </div>
-                        )}
-                      </div>
-                      <div className="flex flex-col items-center">
-                        <span className="text-4xl mb-2">{item.emoji}</span>
-                        <span className="text-sm font-medium">{item.price}</span>
-                       <span className={`text-xs ${
-                          item.change24h >= 0 ? 'text-custom-green' : 'text-red-500'
-                        }`}>
-                          {item.change24h >= 0 ? '+' : ''}{item.change24h}%
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>  */}
- {/* Token Grid */}
- <div className="container mx-auto px-4 pt-24">
-          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-4">
-            {tokens.map((token) => (
-              <div
-                key={token.id}
-                onClick={() => handleTokenSelect(token)}
-                className={`cursor-pointer p-4 rounded-lg ${
-                  isDarkMode ? 'hover:bg-gray-800' : 'hover:bg-gray-100'
-                }`}
-              >
-                <div className="flex flex-col items-center">
-                  <span className="text-4xl mb-2">{
-                    TOKEN_CONFIG.find(config => config.id === token.id)?.emoji || '❓'
-                  }</span>
-                  <span className="text-sm font-medium">{token.price}</span>
-                </div>
-              </div>
-            ))}
-          </div>
+{/* Token Grid */}
+<div className="container mx-auto px-4 pt-24">
+  <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-4">
+    {filteredData.map((token) => (
+      <div
+        key={token.id}
+        onClick={() => {
+          if (isSelectionMode) {
+            toggleEmojiSelection({
+              id: token.id,
+              emoji: token.emoji,
+              marketCap: 0, // Provide a default or appropriate value
+              price: token.price,
+              type: token.type,
+              change24h: 0, // Provide a default or appropriate value
+            });
+          } else {
+            handleTokenSelect(token);
+          }
+        }}
+        className={`cursor-pointer p-4 rounded-lg ${
+          isDarkMode ? 'hover:bg-gray-800' : 'hover:bg-gray-100'
+        } ${
+          isSelectionMode && selectedEmojis.some(e => e.id === token.id) 
+            ? 'bg-custom-green/20' 
+            : ''
+        }`}
+      >
+        <div className="flex flex-col items-center">
+          <span className="text-4xl mb-2">
+            {TOKEN_CONFIG.find(config => config.id === token.id)?.emoji || '❓'}
+          </span>
+          <span className="text-sm font-medium">{token.price}</span>
+          {isSelectionMode && selectedEmojis.some(e => e.id === token.id) && (
+            <div className="absolute top-2 right-2 bg-custom-green text-white rounded-full w-5 h-5 flex items-center justify-center text-xs">
+              ✓
+            </div>
+          )}
         </div>
+      </div>
+    ))}
+  </div>
+</div>
 
         {/* Buy Modal with Detailed Token Info */}
         <Dialog open={showBuyModal} onOpenChange={setShowBuyModal}>
