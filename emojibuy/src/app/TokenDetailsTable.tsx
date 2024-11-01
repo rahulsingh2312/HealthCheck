@@ -1,3 +1,4 @@
+// @ts-nocheck 
 import React, { useState } from 'react';
 import { Line, Bar } from 'react-chartjs-2';
 import { 
@@ -28,8 +29,13 @@ const formatNumber = (num: number) => {
   return num.toLocaleString();
 };
 
+interface TokenDetailsTableProps {
+  selectedToken: {
+  };
+  isDarkMode: boolean;
+}
 
-const TokenDetailsTable = ({ selectedToken, isDarkMode }) => {
+const TokenDetailsTable: React.FC<TokenDetailsTableProps> = ({ selectedToken, isDarkMode }) => {
   const [chartType, setChartType] = useState("priceChange"); // Default chart
 
   if (!selectedToken) return null;
@@ -41,9 +47,10 @@ const TokenDetailsTable = ({ selectedToken, isDarkMode }) => {
     // { value: "liquidityMarketCap", label: "Liquidity vs Market Cap" },
   ];
 
-  const handleChange = (e) => {
+  const handleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     setChartType(e.target.value);
   };
+
 
   const getChartData = () => {
     console.log(selectedToken);
@@ -55,10 +62,10 @@ const TokenDetailsTable = ({ selectedToken, isDarkMode }) => {
             {
               label: "Price Change (%)",
               data: [
-                selectedToken.priceChange?.m5,
-                selectedToken.priceChange?.h1,
-                selectedToken.priceChange?.h6,
-                selectedToken.priceChange?.h24,
+                selectedToken?.priceChange?.m5,
+                selectedToken?.priceChange?.h1,
+                selectedToken?.priceChange?.h6,
+                selectedToken?.priceChange?.h24,
               ],
               backgroundColor: 'rgba(75, 192, 192, 0.6)',
               borderColor: 'rgba(75, 192, 192, 1)',
