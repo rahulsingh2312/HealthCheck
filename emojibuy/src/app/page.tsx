@@ -80,18 +80,35 @@ interface TokenDetails {
 // Token Configuration
 const TOKEN_CONFIG = [
   {
-    id: "SENDdRQtYMWaQrBroBrJ2Q53fgVuq95CV9UPGEvpCxa",
+    id: "73wLBbQ3FnVx9GEEyTDaKEuVbau5KWP47aaYsPbsZuEc",
   },
   {
-    id: "mkvXiNBpa8uiSApe5BrhWVJaT87pJFTZxRy7zFapump",
-  },
-
-  {
-    id: "CBdCxKo9QavR9hfShgpEBG3zekorAeD7W1jfq2o3pump",
+    id: "4QiXvvrov7HQYDQmLkYbDkFCPuCbzE41xnv5WVDzyQQi",
   },
 
   {
-    id: "GJAFwWjJ3vnTsrQVabjBVK2TYB1YtRCQXRDfDgUnpump",
+    id: "9vNYnBh3A1avzcnRTYW8Wp95JTQLS1GKA9gmF71isGbR",
+  },
+
+  {
+    id: "BfUGEJn5RWwPkkFZFgy5H4WAKBDcYryPVxf4eCCC69Pt",
+  },
+
+  
+
+  {
+    id: "8a259MoBCF8DRwHqv4J5cog8mTbE2DDNTqB9BiMKz2at",
+  },
+  {
+    id: "GdNhmuWQN4M22hWi4e2gEhg7787LcUVwud8buxCi1Yod",
+  },
+
+  {
+    id: "FfSQ7ko15hisjVieH5tD4h76zAGCiy1qpvLPBGwMimD",
+  },
+
+  {
+    id: "A3dz8GgCnnwdD4LZF2kq9wpF2Vi5SyLCE6wPiHscu24z",
   },
   
 ];
