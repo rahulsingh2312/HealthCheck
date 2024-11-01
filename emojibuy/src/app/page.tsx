@@ -16,7 +16,8 @@ const formatNumber = (num: number) => {
 };
 
 import { WalletProvider } from '@solana/wallet-adapter-react';
-
+import SingleToken from '../PurchaseFunctions/SingleToken';
+import BundledToken from '../PurchaseFunctions/BundledToken';
 import { TipLinkWalletAdapter } from "@tiplink/wallet-adapter";
 
 import { WalletModalProvider, TipLinkWalletAutoConnectV2 } from '@tiplink/wallet-adapter-react-ui';
@@ -78,27 +79,19 @@ interface TokenDetails {
 const TOKEN_CONFIG = [
   {
     id: "SENDdRQtYMWaQrBroBrJ2Q53fgVuq95CV9UPGEvpCxa",
-    emoji: "🐕",
-    type: "animal"
   },
-
   {
     id: "mkvXiNBpa8uiSApe5BrhWVJaT87pJFTZxRy7zFapump",
-    emoji: "🐈",
-    type: "animal"
   },
 
   {
     id: "CBdCxKo9QavR9hfShgpEBG3zekorAeD7W1jfq2o3pump",
-    emoji: "🐇",
-    type: "animal"
   },
 
   {
     id: "GJAFwWjJ3vnTsrQVabjBVK2TYB1YtRCQXRDfDgUnpump",
-    emoji: "🐓",
-    type: "animal"
   },
+  
 ];
 
 const EmojiRace = () => {
@@ -257,8 +250,17 @@ const toggleEmojiSelection = (token: Token) => {
     emoji: emoji.emoji,
     amount: amountPerEmoji
   })));
-
-  setShowBulkBuyModal(false);
+  const bulkBuyTokens = selectedEmojis.map(emoji => ({
+    id: emoji.id,
+    emoji: emoji.emoji,
+    amount: amountPerEmoji
+  }));
+  
+  console.log('Bulk Buying:', bulkBuyTokens);
+  BundledToken({ 
+    tokens: bulkBuyTokens 
+  });
+  setShowBulkBuyModal(true);
   setSelectedEmojis([]);
   setIsSelectionMode(false);
 };
@@ -576,18 +578,19 @@ const MobileNav = () => (
       <DialogContent className="max-w-xl md:max-h-[85%] max-h-[75%] flex flex-col">
         <DialogHeader>
           <DialogTitle>Token Details</DialogTitle>
+      
         </DialogHeader>
         <div className="overflow-y-auto p-6 flex-grow">
           {selectedToken && (
             <div className="space-y-6">
               <div className="text-center mb-6">
                 <span className="text-6xl mb-4 justify-center items-center flex">
-                  {TOKEN_CONFIG.find(config => config.id === selectedToken.id)?.emoji || 
+                  
                    <img 
                      className="w-24 h-24 object-cover" 
                      src={selectedToken?.info?.imageUrl} 
                      alt="unknown" 
-                   />}
+                   />
                 </span>
                 <p className="text-xl font-medium mb-2">{selectedToken.price}</p>
               </div>
@@ -606,7 +609,8 @@ const MobileNav = () => (
               </div>
 
               <button
-                onClick={() => console.log("hi")}
+                 onClick={() => SingleToken({ tokenaddress: selectedToken?.baseToken.address , amount: buyQuantity })}
+
                 className={`w-full ${
                   isDarkMode ? 'text-white' : 'text-white border'
                 } bg-custom-green hover:bg-green-700 py-3 rounded-lg  font-medium transition-colors`}
