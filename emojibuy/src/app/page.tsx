@@ -7,6 +7,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
 import { WalletMultiButton } from "@tiplink/wallet-adapter-react-ui";
+import BulkTokenSwapButton from './BulkTokenSwapButton';
 import '@solana/wallet-adapter-react-ui/styles.css';
 const formatNumber = (num: number) => {
   if (num >= 1e9) return (num / 1e9).toFixed(1) + ' B';
@@ -31,7 +32,7 @@ const wallets = [
     hideDraggableWidget: false
   }),
 ];
-
+let bulkTokens:any ;
 // import data from './demo.json';
 import MarketInfo from './MarketInfo';  // Import MarketInfo component
 import AmountInput from './Amount';
@@ -186,9 +187,27 @@ const EmojiRace = () => {
   
 useEffect(() => {
   fetchTokenData();
-  const interval = setInterval(fetchTokenData, 3000000); // Refresh every 30 seconds
-  return () => clearInterval(interval);
 }, []);
+interface TokenPrices {
+  [key: string]: { price: number };
+}
+
+const [tokenPrices, setTokenPrices] = useState<TokenPrices>({});
+
+useEffect(() => {
+  async function fetchTokenPrices() {
+    const tokenIds = selectedEmojis.map((emoji) => emoji.id).join(',');
+    try {
+      const response = await fetch(`https://api.jup.ag/price/v2?ids=${tokenIds}&vsToken=So11111111111111111111111111111111111111112`);
+      const data = await response.json();
+      setTokenPrices(data.data);
+    } catch (error) {
+      console.error("Error fetching token prices:", error);
+    }
+  }
+  
+  fetchTokenPrices();
+}, [selectedEmojis]);
 
 const sortTokens = (tokensToSort: TokenDetails[]) => {
   return [...tokensToSort].sort((a, b) => {
@@ -242,29 +261,7 @@ const toggleEmojiSelection = (token: Token) => {
   };
  const amountPerEmoji = selectedEmojis.length > 0 ? totalSolAmount / selectedEmojis.length : 0;
  
- const handleBulkBuy = () => {
-  console.log(selectedEmojis , "selectedEmojis");
-  const amountPerEmoji = selectedEmojis.length > 0 ? totalSolAmount / selectedEmojis.length : 0;
-  
-  console.log('Bulk Buying:', selectedEmojis.map(emoji => ({
-    id: emoji.id,
-    emoji: emoji.emoji,
-    amount: amountPerEmoji
-  })));
-  const bulkBuyTokens = selectedEmojis.map(emoji => ({
-    id: emoji.id,
-    emoji: emoji.emoji,
-    amount: amountPerEmoji
-  }));
-  
-  console.log('Bulk Buying:', bulkBuyTokens);
-  BundledToken({ 
-    tokens: bulkBuyTokens 
-  });
-  setShowBulkBuyModal(true);
-  setSelectedEmojis([]);
-  setIsSelectionMode(false);
-};
+
 const MobileNav = () => (
   <div
     className={`fixed inset-0 z-50 ${
@@ -681,25 +678,55 @@ const MobileNav = () => (
                         min="0.1"
                         step="0.1"
                       />
-                      <p className="mt-2 text-sm text-gray-400">
-                        {amountPerEmoji.toFixed(2)} SOL per emoji
-                      </p>
-                    </div>
+                  <p className="mt-2 text-sm text-gray-400">
+  {amountPerEmoji.toFixed(amountPerEmoji >= 1 ? 2 : Math.min((amountPerEmoji.toString().split(".")[1]?.length || 0), 8))} SOL per emoji
+</p>
 
-                    <div className="grid grid-cols-4 gap-2 mb-6">
+                    </div>
+                    <div className="grid grid-cols-4  gap-2 mb-6">
+            {selectedEmojis.map((emoji, key) => {
+              const tokenPriceInSOL = tokenPrices[emoji.id]?.price || 0;
+              console.log('tokenPriceInSOL', tokenPriceInSOL);
+              const tokensPerEmoji = tokenPriceInSOL > 0 ? amountPerEmoji / tokenPriceInSOL : 0;
+
+              return (
+                <div key={emoji.id || key} className={`rounded-lg text-center p-2  ${isDarkMode ? 'bg-gray-900 text-white' : 'bg-gray-100 text-black'}`}>
+                  <span className="text-2xl flex justify-center items-center">
+                    <img className="w-10" src={emoji.emoji} alt="" />
+                  </span>
+                  <p className="mt-2 text-xs text-gray-400">
+                    {tokensPerEmoji.toFixed(2)} 
+                    &nbsp; tokens
+                  </p>
+                </div>
+              );
+            })}
+          </div>
+                    {/* <div className="grid grid-cols-4 gap-2 mb-6">
                       {selectedEmojis.map((emoji , key) => (
                         <div key={emoji.id || key} className={` rounded-lg  text-center p-2 ${isDarkMode? "bg-gray-900 text-white" : "bg-gray-100 text-black" }`}>
                           <span className="text-2xl flex justify-center items-center"><img className='w-10'  src={emoji.emoji} /></span>
                         </div>
                       ))}
-                    </div>
+                    </div> */}
 
-                    <button
+                    {/* <button
                       onClick={handleBulkBuy}
                       className="w-full bg-custom-green hover:bg-purple-700 text-white py-3 rounded-lg font-medium"
                     >
                       Buy {selectedEmojis.length} Emojis
-                    </button>
+                    </button> */}
+
+                    <BulkTokenSwapButton 
+    onSwapSuccess={() => {
+      setShowBulkBuyModal(false);
+      setSelectedEmojis([]);
+      setIsSelectionMode(false);
+    }}
+  selectedEmojis={selectedEmojis} 
+  totalSolAmount={totalSolAmount}
+                    isDarkMode={true} 
+                    />
                   </div>
                 </DialogContent>
               </Dialog>

@@ -27,7 +27,7 @@ export default function BundledToken(params: {
         });
   
         // Log detailed purchase information
-        console.log('Bulk Purchase Details:', tokens.map(token => ({
+        console.log('Bulk ls:', tokens.map(token => ({
           address: token.id,
           amount: token.amount,
           emoji: token.emoji
