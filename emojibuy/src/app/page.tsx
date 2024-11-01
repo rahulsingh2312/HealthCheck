@@ -1,20 +1,26 @@
 'use client';
 import React, { useState, useEffect } from 'react';
 import {
-  Search, Filter, Plus, Sun, Moon, ShoppingCart, Share2, ExternalLink, Send, PawPrint, Menu, X, MousePointer2
+  Search, Filter, Plus, Sun, Moon, ShoppingCart, Share2, ExternalLink, Squirrel, Send, PawPrint, Menu, X, MousePointer2
 } from 'lucide-react';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
 import { WalletMultiButton } from "@tiplink/wallet-adapter-react-ui";
 import '@solana/wallet-adapter-react-ui/styles.css';
+const formatNumber = (num: number) => {
+  if (num >= 1e9) return (num / 1e9).toFixed(1) + ' B';
+  if (num >= 1e6) return (num / 1e6).toFixed(1) + ' M';
+  if (num >= 1e3) return (num / 1e3).toFixed(1) + ' K';
+  return num.toLocaleString();
+};
 
 import { WalletProvider } from '@solana/wallet-adapter-react';
 
 import { TipLinkWalletAdapter } from "@tiplink/wallet-adapter";
 
 import { WalletModalProvider, TipLinkWalletAutoConnectV2 } from '@tiplink/wallet-adapter-react-ui';
-
+import TokenDetailsTable from './TokenDetailsTable';
 const wallets = [
   new TipLinkWalletAdapter({
     title: "Emoji Buy",
@@ -24,7 +30,7 @@ const wallets = [
   }),
 ];
 
-import data from './demo.json';
+// import data from './demo.json';
 import MarketInfo from './MarketInfo';  // Import MarketInfo component
 import AmountInput from './Amount';
 interface Token {
@@ -35,6 +41,7 @@ interface Token {
   type: string;
   change24h: number;
   xPosition?: number;
+
 }
 
 interface CartItem extends Token {
@@ -43,6 +50,7 @@ interface CartItem extends Token {
 
 // Function to generate consistent X position based on token ID
 const generateXPosition = (id: string, index: number, totalTokens: number) => {
+  console.log('id', id);
   const hash = id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
   const goldenRatio = 1.618033988749895;
   const basePosition = (index * goldenRatio * 100) % 100;
@@ -52,43 +60,20 @@ const generateXPosition = (id: string, index: number, totalTokens: number) => {
 
 // Detailed Token Interface
 interface TokenDetails {
+  url: string | undefined;
+  priceUsd: string;
+  baseToken: any;
+  priceChange: any;
+  info: any;
   id: string;
   emoji: string;
   type: string;
   price: string;
-  extraInfo: {
-    confidenceLevel: string;
-    depth: {
-      buyPriceImpactRatio: {
-        depth: {
-          10: number;
-          100: number;
-          1000: number;
-        }
-      };
-      sellPriceImpactRatio: {
-        depth: {
-          10: number;
-          100: number | null;
-          1000: number | null;
-        }
-      };
-    };
-    quotedPrice: {
-      buyPrice: string;
-      sellPrice: string;
-      buyAt: number;
-      sellAt: number;
-    };
-    lastSwappedPrice: {
-      lastJupiterBuyAt: number;
-      lastJupiterBuyPrice: string;
-      lastJupiterSellAt: number;
-      lastJupiterSellPrice: string;
-    }
-  }
+  marketCap: number;
+  volume24h: number;
+  priceChange24h: number;
+  liquidity: number;
 }
-
 // Token Configuration
 const TOKEN_CONFIG = [
   {
@@ -96,13 +81,25 @@ const TOKEN_CONFIG = [
     emoji: "🐕",
     type: "animal"
   },
+
+  {
+    id: "mkvXiNBpa8uiSApe5BrhWVJaT87pJFTZxRy7zFapump",
+    emoji: "🐈",
+    type: "animal"
+  },
+
+  {
+    id: "CBdCxKo9QavR9hfShgpEBG3zekorAeD7W1jfq2o3pump",
+    emoji: "🐇",
+    type: "animal"
+  },
+
+  {
+    id: "GJAFwWjJ3vnTsrQVabjBVK2TYB1YtRCQXRDfDgUnpump",
+    emoji: "🐓",
+    type: "animal"
+  },
 ];
-// Calculate Y position based on market cap ranking (inverted so higher market cap is at top)
-const calculateYPosition = (marketCap: number, maxMarketCap: number) => {
-  // Invert the position calculation so higher market cap is at top
-  const basePosition = (1 - (marketCap / maxMarketCap)) * 60;
-  return Math.max(20, Math.min(80, 20 + basePosition));
-};
 
 const EmojiRace = () => {
   const [isDarkMode, setIsDarkMode] = useState(false);
@@ -123,177 +120,124 @@ const EmojiRace = () => {
   const [sortBy, setSortBy] = useState('marketCap');
   const [showTop10Only, setShowTop10Only] = useState(false);
   const [tokens, setTokens] = useState<TokenDetails[]>([]);
- 
+  const [marketStats, setMarketStats] = useState({
+    totalMarketCap: 0,
+    topGainer: null,
+    topGainerPercentage: 0,
+    volume24h: 0
+  });
   const [selectedToken, setSelectedToken] = useState<TokenDetails | null>(null);
 
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
-  const fetchTokenPrices = async () => {
+  const fetchTokenData = async () => {
     try {
       setIsLoading(true);
       const tokenIds = TOKEN_CONFIG.map(token => token.id).join(',');
-      const response = await fetch(`https://api.jup.ag/price/v2?ids=${tokenIds}&showExtraInfo=true`);
+      console.log('tokenIds', tokenIds);
+      const response = await fetch(`https://api.dexscreener.com/latest/dex/tokens/${tokenIds}`);
       
       if (!response.ok) {
-        throw new Error('Failed to fetch token prices');
+        throw new Error('Failed to fetch token data');
       }
   
-      const responseData = await response.json();
+      const data = await response.json();
+      
+      // Map to store unique tokens by ID and pass the entire response
+      const uniqueTokens = new Map();
+      console.log('data', data);
   
-      // Transform API data into our detailed token format
-      const processedTokens: TokenDetails[] = TOKEN_CONFIG.map(configToken => {
-        const apiTokenData = responseData.data?.[configToken.id];
+      // Initialize market stats variables
+      let totalMcap = 0;
+      let topGainer = null;
+      let maxChange = -Infinity; // Set to -Infinity to capture the highest percentage change
+      let totalVolume = 0;
+  
+      // Populate unique tokens and calculate market stats in a single pass
+      data.pairs.forEach((pair:any) => {
+        const {info, baseToken, marketCap = 0, volume = {}, priceChange = {} } = pair;
+        const tokenAddress = baseToken?.address;
         
-        if (!apiTokenData) {
-          throw new Error(`No data found for token ${configToken.id}`);
-        }
-  
-        return {
-          ...configToken,
-          price: `$${parseFloat(apiTokenData.price || '0').toFixed(8)}`,
-          type: apiTokenData.type || 'unknown',
-          extraInfo: {
-            confidenceLevel: apiTokenData.extraInfo?.confidenceLevel || 'unknown',
-            depth: {
-              buyPriceImpactRatio: {
-                depth: apiTokenData.extraInfo?.depth?.buyPriceImpactRatio?.depth || {
-                  10: 0, 100: 0, 1000: 0
-                }
-              },
-              sellPriceImpactRatio: {
-                depth: apiTokenData.extraInfo?.depth?.sellPriceImpactRatio?.depth || {
-                  10: 0, 100: null, 1000: null
-                }
-              }
-            },
-            quotedPrice: apiTokenData.extraInfo?.quotedPrice || {
-              buyPrice: '0', 
-              sellPrice: '0', 
-              buyAt: 0, 
-              sellAt: 0
-            },
-            lastSwappedPrice: apiTokenData.extraInfo?.lastSwappedPrice || {
-              lastJupiterBuyAt: 0,
-              lastJupiterBuyPrice: '0',
-              lastJupiterSellAt: 0,
-              lastJupiterSellPrice: '0'
-            }
+        if (tokenAddress && !uniqueTokens.has(tokenAddress)) {
+          uniqueTokens.set(tokenAddress, pair);
+          
+          // Update market stats
+          totalMcap += marketCap;
+          totalVolume += volume.h24 || 0;
+          
+          if (priceChange.h24 > maxChange) {
+            maxChange = priceChange.h24;
+            topGainer = info?.imageUrl || baseToken.symbol;
           }
-        };
+        }
       });
   
-      setTokens(processedTokens);
+      // Update state with calculated stats
+      setMarketStats({
+        totalMarketCap: totalMcap,
+        topGainer,
+        topGainerPercentage: maxChange,
+        volume24h: totalVolume,
+      });
+      
+  
+      setTokens(Array.from(uniqueTokens.values()));
       setIsLoading(false);
     } catch (err) {
-      console.error('Error fetching token prices:', err);
-      setError('Failed to load token prices');
+      console.error('Error fetching token data:', err);
+      setError('Failed to load token data');
       setIsLoading(false);
     }
   };
+  
+useEffect(() => {
+  fetchTokenData();
+  const interval = setInterval(fetchTokenData, 3000000); // Refresh every 30 seconds
+  return () => clearInterval(interval);
+}, []);
 
-  // Fetch prices on component mount
-  useEffect(() => {
-    fetchTokenPrices();
-  }, []);
+const sortTokens = (tokensToSort: TokenDetails[]) => {
+  return [...tokensToSort].sort((a, b) => {
+    switch (sortBy) {
+      case 'marketCap':
+        return (b.marketCap || 0) - (a.marketCap || 0);
+      case 'price':
+        return parseFloat(b.priceUsd?.replace('$', '') || '0') - 
+               parseFloat(a.priceUsd?.replace('$', '') || '0');
+      case 'change24h':
+        return (b.priceChange?.h24 || 0) - (a.priceChange?.h24 || 0);
+      default:
+        return 0;
+    }
+  });
+};
+
+const filteredData = sortTokens(
+  tokens
+    .filter(item => {
+      const matchesSearch = item.baseToken.symbol.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                            item.priceUsd.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesType = filterType === 'all' || item.type === filterType;
+      return matchesSearch && matchesType;
+    })
+).slice(0, showTop10Only ? 10 : undefined);
 
 
-  const toggleEmojiSelection = (token: Token) => {
-    setSelectedEmojis(prev => 
-      prev.some(e => e.id === token.id)
-        ? prev.filter(e => e.id !== token.id)
-        : [...prev, token]
-    );
-  };
+
+const toggleEmojiSelection = (token: Token) => {
+  setSelectedEmojis(prev => 
+    prev.some(e => e.id === token.id)
+      ? prev.filter(e => e.id !== token.id)
+      : [...prev, token]
+  );
+};
+
   
   const handleTokenSelect = (token: TokenDetails) => {
     setSelectedToken(token);
     setShowBuyModal(true);
   };
-  const TokenDetailsTable = () => {
-    if (!selectedToken) return null;
-  
-    return (
-      <div className="space-y-4 text-xs">
-        {/* Basic Info Section */}
-        <div className="bg-gray-100 dark:bg-gray-800 rounded-lg p-4">
-          <h3 className="text-xs font-semibold mb-3 border-b pb-2 dark:border-gray-700">
-            Basic Information
-          </h3>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="flex justify-between">
-              <span className="font-medium text-gray-600 text-xs dark:text-gray-300">Price:</span>
-              <span className="text-xs font-bold">{selectedToken.price}</span>
-            </div>
-        
-            <div className="flex justify-between">
-              <span className="font-medium text-gray-600 text-xs dark:text-gray-300">Confidence:</span>
-              <span className='text-xs'>{selectedToken.extraInfo.confidenceLevel}</span>
-            </div>
-          </div>
-        </div>
-  
-        {/* Market Depth Section */}
-        <div className="bg-gray-100 dark:bg-gray-800 rounded-lg p-4">
-          <h3 className="text-xs font-semibold mb-3 border-b pb-2 dark:border-gray-700">
-            Market Depth
-          </h3>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b text-xs dark:border-gray-700">
-                  <th className="py-2 text-xs text-left">Metric</th>
-                  <th className="py-2 text-xs text-right">Buy Impact</th>
-                  <th className="py-2 text-xs text-right">Sell Impact</th>
-                </tr>
-              </thead>
-              <tbody>
-                {[10].map((size) => (
-                  <tr key={size} className="border-b last:border-b-0 dark:border-gray-700">
-                    <td className="py-2 font-medium text-xs">Size {size}</td>
-                    <td className="py-2 text-xs text-right text-green-600 dark:text-green-400">
-                    {selectedToken.extraInfo.depth.buyPriceImpactRatio.depth[size as 10 | 100 | 1000]?.toFixed(3) || 'not enough traded'}
-                    </td>
-                    <td className="py-2 text-xs text-right text-red-600 dark:text-red-400">
-                      {selectedToken.extraInfo.depth.sellPriceImpactRatio.depth[size as 10 | 100 | 1000]?.toFixed(3) || 'not enough traded'}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-  
-        {/* Quoted Prices Section */}
-        {/* <div className="bg-gray-100 dark:bg-gray-800 rounded-lg p-4">
-          <h3 className="text-lg font-semibold mb-3 border-b pb-2 dark:border-gray-700">
-            Last Traded Prices
-          </h3>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="flex justify-between">
-              <span className="font-medium text-gray-600 dark:text-gray-300">Buy:</span>
-              <span className="text-green-600 dark:text-green-400">
-                {parseFloat(selectedToken.extraInfo.quotedPrice.buyPrice).toFixed(3) || 'not enough traded'}
-              </span>
-            </div>
-            <div className="flex justify-between">
-              <span className="font-medium text-gray-600 dark:text-gray-300">Sell:</span>
-              <span className="text-red-600 dark:text-red-400">
-              {parseFloat(selectedToken.extraInfo.quotedPrice.sellPrice).toFixed(3) || 'not enough traded'}
-              </span>
-            </div>
-            <div className="col-span-2 mt-2 text-sm text-gray-500 dark:text-gray-400">
-              <span className="font-medium">Buy Timestamp:</span>{' '}
-              {new Date(selectedToken.extraInfo.quotedPrice.buyAt * 1000).toLocaleString()}
-            </div>
-          </div>
-        </div> */}
-      </div>
-    );
-  };
 
-
-  // Enhanced filter options
   const filterOptions = {
     types: ['all', 'animal', 'people', 'object', 'nature', 'food'],
     sortOptions: [
@@ -302,26 +246,22 @@ const EmojiRace = () => {
       { value: 'price', label: 'Price' }
     ]
   };
-
-
- // Calculate amount per emoji
  const amountPerEmoji = selectedEmojis.length > 0 ? totalSolAmount / selectedEmojis.length : 0;
-
-
-
+ 
  const handleBulkBuy = () => {
-   // Implement your bulk buy logic here
-   console.log('Buying', selectedEmojis.length, 'emojis with', amountPerEmoji, 'SOL each');
-   setShowBulkBuyModal(false);
-   setSelectedEmojis([]);
-   setIsSelectionMode(false);
- };
+  console.log(selectedEmojis , "selectedEmojis");
+  const amountPerEmoji = selectedEmojis.length > 0 ? totalSolAmount / selectedEmojis.length : 0;
+  
+  console.log('Bulk Buying:', selectedEmojis.map(emoji => ({
+    id: emoji.id,
+    emoji: emoji.emoji,
+    amount: amountPerEmoji
+  })));
 
-
-
-  //MOBILE NAV
-// MOBILE NAV
-
+  setShowBulkBuyModal(false);
+  setSelectedEmojis([]);
+  setIsSelectionMode(false);
+};
 const MobileNav = () => (
   <div
     className={`fixed inset-0 z-50 ${
@@ -365,13 +305,6 @@ const MobileNav = () => (
           <Filter size={18} />
         </button>
 
-        {/* <button
-          onClick={() => setShowCartModal(true)}
-          className="flex items-center justify-center gap-3 p-2 rounded-lg w-full bg-gray-800 text-white"
-        >
-          <ShoppingCart size={18} />
-          ({cart.length})
-        </button> */}
 
         <button
           onClick={() => setShowCreateModal(true)}
@@ -389,137 +322,80 @@ const MobileNav = () => (
     document.documentElement.classList.toggle('dark', isDarkMode);
   }, [isDarkMode]);
 
-  const processedData = React.useMemo(() => {
-    let sortedData = [...data.tokens];
 
-    // Apply sorting
-    switch (sortBy) {
-      case 'marketCap':
-        sortedData.sort((a, b) => b.marketCap - a.marketCap);
-        break;
-      case 'change24h':
-        sortedData.sort((a, b) => b.change24h - a.change24h);
-        break;
-      case 'price':
-        sortedData.sort((a, b) => parseFloat(b.price) - parseFloat(a.price));
-        break;
-    }
 
-    const maxMarketCap = Math.max(...sortedData.map(t => t.marketCap));
-    
-    return sortedData.map((token, index) => ({
-      ...token,
-      xPos: generateXPosition(token.id, index, sortedData.length),
-      yPos: calculateYPosition(token.marketCap, maxMarketCap)
-    }));
-  }, [sortBy]);
-
- // Rest of the component remains largely the same, but use 'tokens' instead of hardcoded data
- const filteredData = tokens
- .filter(item => {
-   const matchesSearch = item.emoji.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                       item.price.toLowerCase().includes(searchTerm.toLowerCase());
-   const matchesType = filterType === 'all' || item.type === filterType;
-   return matchesSearch && matchesType;
- })
- .slice(0, showTop10Only ? 10 : undefined);
-
-  const addToCart = (token: Token, quantity: number) => {
-    setCart(prevCart => {
-      const existingItem = prevCart.find(item => item.id === token.id);
-      if (existingItem) {
-        return prevCart.map(item =>
-          item.id === token.id
-            ? { ...item, quantity: item.quantity + quantity }
-            : item
-        );
-      }
-      return [...prevCart, { ...token, quantity }];
-    });
-    setShowBuyModal(false);
-    setBuyQuantity(1);
-  };
-
-  const removeFromCart = (tokenId: string) => {
-    setCart(prevCart => prevCart.filter(item => item.id !== tokenId));
-  };
-
-  const updateCartQuantity = (tokenId: string, quantity: number) => {
-    if (quantity <= 0) {
-      removeFromCart(tokenId);
-      return;
-    }
-    setCart(prevCart =>
-      prevCart.map(item =>
-        item.id === tokenId ? { ...item, quantity } : item
-      )
-    );
-  };
-
-  // Filter Panel Component
-  const FilterPanel = () => (
-    <div className={`fixed top-20 right-4 z-[100] px-4   py-4 rounded-lg shadow-lg ${
-      isDarkMode ? 'bg-gray-800' : 'bg-white'
-    }`}>
-      <div className='justify-between flex'>
-      <h3 className="font-medium mb-3">Filters</h3>
-      <X  onClick={() => setShowFilters(!showFilters)} size={24} className="text-gray-400 cursor-pointer" />
-      </div>
-      
-      <div className="space-y-4">
-        <div>
-          <label className="block text-sm mb-2">Type</label>
-          <select
-            value={filterType}
-            onChange={(e) => setFilterType(e.target.value)}
-            className={`w-full rounded-lg px-3 py-2 ${
-              isDarkMode ? 'bg-gray-700' : 'bg-gray-100'
-            }`}
-          >
-            {filterOptions.types.map(type => (
-              <option key={type} value={type}>
-                {type.charAt(0).toUpperCase() + type.slice(1)}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div>
-          <label className="block text-sm mb-2">Sort By</label>
-          <select
-            value={sortBy}
-            onChange={(e) => setSortBy(e.target.value)}
-            className={`w-full rounded-lg px-3 py-2 ${
-              isDarkMode ? 'bg-gray-700' : 'bg-gray-100'
-            }`}
-          >
-            {filterOptions.sortOptions.map(option => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <input
-            type="checkbox"
-            id="top10"
-            checked={showTop10Only}
-            onChange={(e) => setShowTop10Only(e.target.checked)}
-            className="rounded"
-          />
-          <label htmlFor="top10" className="text-sm">Show Top 10 Only</label>
-        </div>
-      </div>
+ // Enhanced FilterPanel component
+ const FilterPanel = () => (
+  <div className={`fixed top-20 right-4 z-[100] px-4 py-4 rounded-lg shadow-lg ${
+    isDarkMode ? 'bg-gray-800' : 'bg-white'
+  }`}>
+    <div className='justify-between flex items-center mb-4'>
+      <h3 className="font-medium">Filters</h3>
+      <button 
+        onClick={() => setShowFilters(false)}
+        className="p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-full"
+      >
+        <X size={20} className="text-gray-400" />
+      </button>
     </div>
-  );
+    
+    <div className="space-y-4">
+      {/* <div>
+        <label className="block text-sm mb-2">Type</label>
+        <select
+          value={filterType}
+          onChange={(e) => setFilterType(e.target.value)}
+          className={`w-full rounded-lg px-3 py-2 ${
+            isDarkMode ? 'bg-gray-700 text-white' : 'bg-gray-100'
+          }`}
+        >
+          {filterOptions.types.map(type => (
+            <option key={type} value={type}>
+              {type.charAt(0).toUpperCase() + type.slice(1)}
+            </option>
+          ))}
+        </select>
+      </div> */}
+
+      <div>
+        {/* <label className="block text-sm mb-2">Sort By</label> */}
+        <select
+          value={sortBy}
+          onChange={(e) => setSortBy(e.target.value)}
+          className={`w-full rounded-lg px-3 py-2 ${
+            isDarkMode ? 'bg-gray-700 text-white' : 'bg-gray-100'
+          }`}
+        >
+          {filterOptions.sortOptions.map(option => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      <div className="flex items-center gap-2">
+        <input
+          type="checkbox"
+          id="top10"
+          checked={showTop10Only}
+          onChange={(e) => setShowTop10Only(e.target.checked)}
+          className="rounded"
+        />
+        <label htmlFor="top10" className="text-sm">Show Top 10 Only</label>
+      </div>
+
+     
+    </div>
+  </div>
+);
 
   return (
     <WalletProvider wallets={wallets} autoConnect>
     {typeof window !== 'undefined' && (
       <TipLinkWalletAutoConnectV2 isReady query={new URLSearchParams(window.location.search)}>
         <WalletModalProvider>
+
     <div className={`min-h-screen transition-colors duration-200 ${
       isDarkMode ? 'bg-gray-900 text-white' : 'bg-gray-50 text-gray-900'
     }`}>
@@ -544,10 +420,23 @@ const MobileNav = () => (
           <Menu size={24} />
         </button>
       </div>
-      {!showMobileNav &&  <div>  <button
+      {!showMobileNav && !isSelectionMode &&  <div>  <button
+                onClick={() => {
+                setIsSelectionMode(!isSelectionMode)
+                } }className={` bottom-24 text-xs fixed md:hidden right-4 z-50 px-3 py-2 rounded-full ${
+                  !isSelectionMode 
+                    ? 'bg-custom-green text-white' 
+                    : isDarkMode ? 'bg-gray-700' : 'bg-gray-200'
+                } flex items-center gap-1`}
+              >
+                <MousePointer2 size={18} />
+                {isSelectionMode ? 'Exit Selection' : 'Select Emojis'}
+              </button> 
+              </div> }
+              {!showMobileNav && isSelectionMode &&  <div>  <button
                 onClick={() => setIsSelectionMode(!isSelectionMode)}
-                className={` bottom-24 text-xs fixed md:hidden right-4 z-50 px-3 py-2 rounded-full ${
-                  isSelectionMode 
+                className={` bottom-36 text-xs fixed md:hidden right-4 z-50 px-3 py-2 rounded-full ${
+                  !isSelectionMode 
                     ? 'bg-custom-green text-white' 
                     : isDarkMode ? 'bg-gray-700' : 'bg-gray-200'
                 } flex items-center gap-1`}
@@ -569,7 +458,7 @@ const MobileNav = () => (
         <button
                 onClick={() => setIsSelectionMode(!isSelectionMode)}
                 className={`fixed bottom-4 top-24 right-4 z-50 px-4 py-6 rounded-full ${
-                  isSelectionMode 
+                  !isSelectionMode 
                     ? 'bg-custom-green text-white' 
                     : isDarkMode ? 'bg-gray-700' : 'bg-gray-200'
                 } flex items-center gap-2`}
@@ -620,20 +509,7 @@ const MobileNav = () => (
           >
             {isDarkMode ? <Sun size={18} /> : <Moon size={18} />}
           </button>
-{/* 
-          <button
-            onClick={() => setShowCartModal(true)}
-            className={`p-1.5 rounded-lg relative ${
-              isDarkMode ? 'hover:bg-gray-800' : 'hover:bg-gray-200'
-            }`}
-          >
-            <ShoppingCart size={18} />
-            {cart.length > 0 && (
-              <span className="absolute -top-1 -right-1 bg-custom-green text-white text-xs rounded-full w-4 h-4 flex items-center justify-center">
-                {cart.length}
-              </span>
-            )}
-          </button> */}
+
 
           <button
             onClick={() => setShowCreateModal(true)}
@@ -644,55 +520,58 @@ const MobileNav = () => (
           </button>
         </div>
       </div>
-
-   {/* Filter Panel */}
 {showFilters && <FilterPanel />}
-
-{/* Token Grid */}
-<div className="container mx-auto px-4 pt-24">
-  <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-4">
-    {filteredData.map((token) => (
-      <div
-        key={token.id}
-        onClick={() => {
-          if (isSelectionMode) {
-            toggleEmojiSelection({
-              id: token.id,
-              emoji: token.emoji,
-              marketCap: 0, // Provide a default or appropriate value
-              price: token.price,
-              type: token.type,
-              change24h: 0, // Provide a default or appropriate value
-            });
-          } else {
-            handleTokenSelect(token);
-          }
-        }}
-        className={`cursor-pointer p-4 rounded-lg ${
-          isDarkMode ? 'hover:bg-gray-800' : 'hover:bg-gray-100'
-        } ${
-          isSelectionMode && selectedEmojis.some(e => e.id === token.id) 
-            ? 'bg-custom-green/20' 
-            : ''
-        }`}
-      >
-        <div className="flex flex-col items-center">
-          <span className="text-4xl mb-2">
-            {TOKEN_CONFIG.find(config => config.id === token.id)?.emoji || '❓'}
-          </span>
-          <span className="text-sm font-medium">{token.price}</span>
-          {isSelectionMode && selectedEmojis.some(e => e.id === token.id) && (
-            <div className="absolute top-2 right-2 bg-custom-green text-white rounded-full w-5 h-5 flex items-center justify-center text-xs">
-              ✓
+<div className="container mx-auto px-4 pt-10">
+          {isLoading ? (
+            <div className="text-center py-10">Loading...</div>
+          ) : (
+            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-4">
+              {filteredData.map((token , index) => (
+                <div
+                  key={token.id || index}
+                  onClick={() => {
+                    if (isSelectionMode) {
+                      toggleEmojiSelection({
+                        id: token.baseToken?.address || '',
+                        emoji: token?.info.imageUrl || '',
+                        marketCap: token.marketCap || 0,
+                        price: token.priceUsd || '',
+                        type:  'unknown',
+                        change24h: token.priceChange?.h24 || 0,
+                        xPosition: generateXPosition(token.baseToken?.address || '', 0, tokens.length)
+                      });
+                      setSelectedToken(token);
+                    } else {
+                      setSelectedToken(token);
+                      setShowBuyModal(true);
+                    }
+                  }}
+                  className={`cursor-pointer p-4 rounded-lg ${
+                    isSelectionMode && selectedEmojis.some(e => e.id === token.baseToken?.address)
+                      ? 'bg-custom-green/40' // Custom green background for selected emojis in selection mode
+                      : isDarkMode
+                      ? 'hover:bg-gray-800' // Dark mode hover effect
+                      : 'hover:bg-gray-100' // Light mode hover effect
+                  }`}
+                  
+                >
+                  <div className="flex flex-col items-center">
+                    <span className="text-4xl mb-2"><img className=' ' src={token?.info?.imageUrl}></img></span>
+                    <span className="text-xs text-gray-500">
+                       ${formatNumber(token.marketCap)}
+                    </span>
+                    <span className={`text-xs ${token.priceChange.h24
+ >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                    {console.log('token', token)}
+                      {token.priceChange.h24.toFixed(2)}%
+                    </span>
+                  </div>
+                </div>
+              ))}
             </div>
           )}
         </div>
-      </div>
-    ))}
-  </div>
-</div>
 
-        {/* Buy Modal with Detailed Token Info */}
         <Dialog open={showBuyModal} onOpenChange={setShowBuyModal}>
           <DialogContent className="sm:max-w-xl">
             <DialogHeader>
@@ -702,13 +581,13 @@ const MobileNav = () => (
               {selectedToken && (
                 <>
                   <div className="text-center mb-6">
-                    <span className="text-6xl mb-4 block">
-                      {TOKEN_CONFIG.find(config => config.id === selectedToken.id)?.emoji || '❓'}
+                    <span className="text-6xl mb-4 justify-center items-center flex ">
+                      {TOKEN_CONFIG.find(config => config.id === selectedToken.id)?.emoji || <img className=' ' src={selectedToken?.info?.imageUrl}></img>}
                     </span>
                     <p className="text-xl font-medium mb-2">{selectedToken.price}</p>
                   </div>
                   
-                  <TokenDetailsTable />
+                  <TokenDetailsTable selectedToken={selectedToken}  isDarkMode={isDarkMode}  />
 <div className='mt-6'>
 
 <AmountInput 
@@ -717,18 +596,9 @@ isdarkmode={isDarkMode}
   onChange={(value) => setBuyQuantity(value)}
 />
 </div>
-            {/* <button 
-              onClick={() => selectedEmoji && addToCart(selectedEmoji, buyQuantity)}
-              className={`w-full
-                ${
-                  isDarkMode ? 'text-white ' : 'text-white border border-black border-solid'
-                }
-                bg-custom-green hover:bg-purple-700 py-3 rounded-lg font-medium transition-colors`}
-            >
-              Add to Cart
-            </button> */}
+      
             <button 
-              onClick={() => selectedEmoji && addToCart(selectedEmoji, buyQuantity)}
+              onClick={() => console.log("hi")}
               className={`w-full
                 ${
                   isDarkMode ? 'text-white ' : 'text-white border '
@@ -738,28 +608,49 @@ isdarkmode={isDarkMode}
               Buy Now
             </button>
 
-                  <div className="grid grid-cols-4 justify-center items-center gap-4 mt-5">
+                  <div className="grid grid-cols-3 justify-center items-center gap-4 mt-5">
+            
               <button className={`flex text-xs items-center   py-2 px-1 border-solid border justify-center rounded-lg ${
       isDarkMode ? 'border-white' : 'border-black'
-    }`}>
+    }`}> <a href={selectedToken.url}>
                 <ExternalLink className='mr-2' size={13} />
+                </a>
+                <a href={selectedToken.url}>
                 DEX
+                </a>
               </button>
-              <button className={`flex text-xs items-center   py-2 px-1 border-solid border justify-center rounded-lg ${
+           {/* {selectedToken?.info?.socials?.} */}
+           
+              <button  
+               className={`flex text-xs items-center   py-2 px-1 border-solid border justify-center rounded-lg ${
       isDarkMode ? 'border-white' : 'border-black'
-    }`}>                <Share2 className='mr-2' size={13} />
-                X
+    }`}>               
+   
+    <a href={selectedToken?.info?.socials[0]?.url}>
+     <Share2 className='mr-2' size={13} />
+     </a>
+     <a href={selectedToken?.info?.socials[0]?.url}>
+                Social
+                </a>
               </button>
-              <button className={`flex text-xs items-center   py-2 px-1 border-solid border justify-center rounded-lg ${
+           
+              <button  
+               className={`flex text-xs items-center   py-2 px-1 border-solid border justify-center rounded-lg ${
       isDarkMode ? 'border-white' : 'border-black'
-    }`}>                <Send className='mr-2' size={13} />
-                tg
+    }`}>               
+   
+    <a href={selectedToken?.info?.websites[0]?.url}>
+     <Squirrel className='mr-2' size={13} />
+     </a>
+     <a href={selectedToken?.info?.websites[0]?.url}>
+               Website
+                </a>
               </button>
-              <button className={`flex text-xs items-center   py-2 px-1 border-solid border justify-center rounded-lg ${
+              {/* <button className={`flex text-xs items-center   py-2 px-1 border-solid border justify-center rounded-lg ${
       isDarkMode ? 'border-white' : 'border-black'
     }`}>                <PawPrint className='mr-2' size={13} />
                 Sell
-              </button>
+              </button> */}
             </div>
                 </>
               )}
@@ -791,9 +682,9 @@ isdarkmode={isDarkMode}
                     </div>
 
                     <div className="grid grid-cols-4 gap-2 mb-6">
-                      {selectedEmojis.map((emoji) => (
-                        <div key={emoji.id} className={` rounded-lg text-center p-2 ${isDarkMode? "bg-gray-900 text-white" : "bg-gray-100 text-black" }`}>
-                          <span className="text-2xl">{emoji.emoji}</span>
+                      {selectedEmojis.map((emoji , key) => (
+                        <div key={emoji.id || key} className={` rounded-lg  text-center p-2 ${isDarkMode? "bg-gray-900 text-white" : "bg-gray-100 text-black" }`}>
+                          <span className="text-2xl flex justify-center items-center"><img className='w-10'  src={emoji.emoji} /></span>
                         </div>
                       ))}
                     </div>
@@ -808,7 +699,7 @@ isdarkmode={isDarkMode}
                 </DialogContent>
               </Dialog>
 
-              {selectedEmojis.length > 0 && (
+              {selectedEmojis.length > 0  && isSelectionMode && (
                 <button
                   onClick={() => setShowBulkBuyModal(true)}
                   className="fixed bottom-20 right-4 z-50 px-6 py-3 bg-custom-green text-white rounded-full shadow-lg flex items-center gap-2"
@@ -817,149 +708,6 @@ isdarkmode={isDarkMode}
                   Buy {selectedEmojis.length} Selected
                 </button>
               )}
-
-      {/* Buy Token Modal */}
-      {/* <Dialog open={showBuyModal} onOpenChange={setShowBuyModal}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="text-center">Buy Token</DialogTitle>
-          </DialogHeader>
-          <div className="p-6">
-            {selectedEmoji && (
-              <div className="text-center mb-6">
-                <span className="text-6xl mb-4 block">{selectedEmoji.emoji}</span>
-                <p className="text-xl font-medium mb-2">{selectedEmoji.price}</p>
-                <p className={`text-sm ${
-                  selectedEmoji.change24h >= 0 ? 'text-custom-green' : 'text-red-500'
-                }`}>
-                  {selectedEmoji.change24h >= 0 ? '+' : ''}{selectedEmoji.change24h}%
-                </p>
-              </div>
-            )}
-           {selectedEmoji && (
-  <div className="table-auto w-full md:ml-5 text-xs mb-6">
-    <div className="table-row">
-      <div className="table-cell text-center p-3 font-medium border border-gray-600">5M</div>
-      <div className="table-cell text-center p-3 font-medium border border-gray-600">1H</div>
-      <div className="table-cell text-center p-3 font-medium border border-gray-600">6H</div>
-      <div className="table-cell text-center p-3 font-medium border border-gray-600">24H</div>
-    </div>
-    <div className="table-row">
-      <div className="table-cell text-center p-3 font-medium border border-gray-600">{selectedEmoji.price}%</div>
-      <div className={`table-cell text-center p-3 font-medium border border-gray-600 ${selectedEmoji.change24h >= 0 ? 'text-custom-green' : 'text-red-500'}`}>
-        {selectedEmoji.price}%
-      </div>
-      <div className={`table-cell text-center p-3 font-medium border border-gray-600 ${selectedEmoji.change24h >= 0 ? 'text-custom-green' : 'text-red-500'}`}>
-        {selectedEmoji.price}%
-      </div>
-      <div className={`table-cell text-center p-3 font-medium border border-gray-600 ${selectedEmoji.change24h >= 0 ? 'text-custom-green' : 'text-red-500'}`}>
-        {selectedEmoji.price}%
-      </div>
-    </div>
-  </div>
-)}
-
-<AmountInput 
-isdarkmode={isDarkMode}
-  value={buyQuantity}
-  onChange={(value) => setBuyQuantity(value)}
-/>
-            <button 
-              onClick={() => selectedEmoji && addToCart(selectedEmoji, buyQuantity)}
-              className={`w-full
-                ${
-                  isDarkMode ? 'text-white ' : 'text-white border border-black border-solid'
-                }
-                bg-custom-green hover:bg-purple-700 py-3 rounded-lg font-medium transition-colors`}
-            >
-              Add to Cart
-            </button>
-            <button 
-              onClick={() => selectedEmoji && addToCart(selectedEmoji, buyQuantity)}
-              className={`w-full
-                ${
-                  isDarkMode ? 'text-white ' : 'text-white border '
-                }
-                bg-custom-green hover:bg-green-700  py-3 rounded-lg font-medium transition-colors`}
-            >
-              Buy Now
-            </button>
-                
-            <div className="grid grid-cols-4 justify-center items-center gap-4 mt-5">
-              <button className={`flex text-xs items-center   py-2 px-1 border-solid border justify-center rounded-lg ${
-      isDarkMode ? 'border-white' : 'border-black'
-    }`}>
-                <ExternalLink className='mr-2' size={13} />
-                DEX
-              </button>
-              <button className={`flex text-xs items-center   py-2 px-1 border-solid border justify-center rounded-lg ${
-      isDarkMode ? 'border-white' : 'border-black'
-    }`}>                <Share2 className='mr-2' size={13} />
-                X
-              </button>
-              <button className={`flex text-xs items-center   py-2 px-1 border-solid border justify-center rounded-lg ${
-      isDarkMode ? 'border-white' : 'border-black'
-    }`}>                <Send className='mr-2' size={13} />
-                tg
-              </button>
-              <button className={`flex text-xs items-center   py-2 px-1 border-solid border justify-center rounded-lg ${
-      isDarkMode ? 'border-white' : 'border-black'
-    }`}>                <PawPrint className='mr-2' size={13} />
-                Sell
-              </button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog> */}
-
-      {/* Cart Modal */}
-      <Dialog open={showCartModal} onOpenChange={setShowCartModal}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Your Cart</DialogTitle>
-          </DialogHeader>
-          <div className="p-6">
-            {cart.length === 0 ? (
-              <p className="text-center text-gray-400">Your cart is empty</p>
-            ) : (
-              <div className="space-y-4">
-                {cart.map((item) => (
-                  <div key={item.id} className="flex items-center justify-between gap-4 p-3 bg-gray-800 rounded-lg">
-                    <div className="flex text-white items-center gap-3">
-                      <span className="text-2xl">{item.emoji}</span>
-                      <span>{item.price}</span>
-                    </div>
-                    <div className="flex  items-center gap-2">
-                      {/* <button 
-                        onClick={() => updateCartQuantity(item.id, item.quantity - 1)}
-                        className="bg-gray-700 px-4 hover:bg-gray-600 p-1 rounded"
-                      >
-                        - */}
-                      {/* </button> */}
-                      <span className="w-8 text-white text-center">{item.quantity}</span>
-                      {/* <button 
-                        onClick={() => updateCartQuantity(item.id, item.quantity + 1)}
-                        className="bg-gray-700 px-4 hover:bg-gray-600 p-1 rounded"
-                      >
-                        +
-                      </button> */}
-                      <button 
-                        onClick={() => removeFromCart(item.id)}
-                        className="ml-2  text-red-500 hover:text-red-400"
-                      >
-                        ×
-                      </button>
-                    </div>
-                  </div>
-                ))}
-                <button className="w-full text-white bg-custom-green hover:bg-purple-700 py-3 rounded-lg font-medium mt-6 transition-colors">
-                  Checkout
-                </button>
-              </div>
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
 
       {/* Create Token Modal */}
       <Dialog open={showCreateModal} onOpenChange={setShowCreateModal}>
@@ -985,7 +733,7 @@ isdarkmode={isDarkMode}
         </DialogContent>
 
       </Dialog>
-      <MarketInfo marketCap={11.13} topgain="🤌" gainerPercentage={104} />
+      <MarketInfo marketCap={formatNumber(marketStats.totalMarketCap)} topgain={marketStats.topGainer} gainerPercentage={marketStats.topGainerPercentage.toFixed(2)} />
 
     </div>
     </WalletModalProvider>
