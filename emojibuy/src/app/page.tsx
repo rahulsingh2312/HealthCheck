@@ -573,90 +573,86 @@ const MobileNav = () => (
         </div>
 
         <Dialog open={showBuyModal} onOpenChange={setShowBuyModal}>
-          <DialogContent className="sm:max-w-xl">
-            <DialogHeader>
-              <DialogTitle>Token Details</DialogTitle>
-            </DialogHeader>
-            <div className="p-6">
-              {selectedToken && (
-                <>
-                  <div className="text-center mb-6">
-                    <span className="text-6xl mb-4 justify-center items-center flex ">
-                      {TOKEN_CONFIG.find(config => config.id === selectedToken.id)?.emoji || <img className=' ' src={selectedToken?.info?.imageUrl}></img>}
-                    </span>
-                    <p className="text-xl font-medium mb-2">{selectedToken.price}</p>
-                  </div>
-                  
-                  <TokenDetailsTable selectedToken={selectedToken}  isDarkMode={isDarkMode}  />
-<div className='mt-6'>
+      <DialogContent className="max-w-xl md:max-h-[85%] max-h-[75%] flex flex-col">
+        <DialogHeader>
+          <DialogTitle>Token Details</DialogTitle>
+        </DialogHeader>
+        <div className="overflow-y-auto p-6 flex-grow">
+          {selectedToken && (
+            <div className="space-y-6">
+              <div className="text-center mb-6">
+                <span className="text-6xl mb-4 justify-center items-center flex">
+                  {TOKEN_CONFIG.find(config => config.id === selectedToken.id)?.emoji || 
+                   <img 
+                     className="w-24 h-24 object-cover" 
+                     src={selectedToken?.info?.imageUrl} 
+                     alt="unknown" 
+                   />}
+                </span>
+                <p className="text-xl font-medium mb-2">{selectedToken.price}</p>
+              </div>
 
-<AmountInput 
-isdarkmode={isDarkMode}
-  value={buyQuantity}
-  onChange={(value) => setBuyQuantity(value)}
-/>
-</div>
-      
-            <button 
-              onClick={() => console.log("hi")}
-              className={`w-full
-                ${
-                  isDarkMode ? 'text-white ' : 'text-white border '
-                }
-                bg-custom-green hover:bg-green-700  py-3 rounded-lg font-medium transition-colors`}
-            >
-              Buy Now
-            </button>
+              <TokenDetailsTable 
+                selectedToken={selectedToken} 
+                isDarkMode={isDarkMode} 
+              />
 
-                  <div className="grid grid-cols-3 justify-center items-center gap-4 mt-5">
-            
-              <button className={`flex text-xs items-center   py-2 px-1 border-solid border justify-center rounded-lg ${
-      isDarkMode ? 'border-white' : 'border-black'
-    }`}> <a href={selectedToken.url}>
-                <ExternalLink className='mr-2' size={13} />
-                </a>
-                <a href={selectedToken.url}>
-                DEX
-                </a>
+              <div className='mt-6'>
+                <AmountInput  
+                  isdarkmode={isDarkMode}   
+                  value={buyQuantity}   
+                  onChange={(value) => setBuyQuantity(value)} 
+                />
+              </div>
+
+              <button
+                onClick={() => console.log("hi")}
+                className={`w-full ${
+                  isDarkMode ? 'text-white' : 'text-white border'
+                } bg-custom-green hover:bg-green-700 py-3 rounded-lg  font-medium transition-colors`}
+              >
+                Buy Now
               </button>
-           {/* {selectedToken?.info?.socials?.} */}
-           
-              <button  
-               className={`flex text-xs items-center   py-2 px-1 border-solid border justify-center rounded-lg ${
-      isDarkMode ? 'border-white' : 'border-black'
-    }`}>               
-   
-    <a href={selectedToken?.info?.socials[0]?.url}>
-     <Share2 className='mr-2' size={13} />
-     </a>
-     <a href={selectedToken?.info?.socials[0]?.url}>
-                Social
-                </a>
-              </button>
-           
-              <button  
-               className={`flex text-xs items-center   py-2 px-1 border-solid border justify-center rounded-lg ${
-      isDarkMode ? 'border-white' : 'border-black'
-    }`}>               
-   
-    <a href={selectedToken?.info?.websites[0]?.url}>
-     <Squirrel className='mr-2' size={13} />
-     </a>
-     <a href={selectedToken?.info?.websites[0]?.url}>
-               Website
-                </a>
-              </button>
-              {/* <button className={`flex text-xs items-center   py-2 px-1 border-solid border justify-center rounded-lg ${
-      isDarkMode ? 'border-white' : 'border-black'
-    }`}>                <PawPrint className='mr-2' size={13} />
-                Sell
-              </button> */}
+
+              <div className="grid grid-cols-3 justify-center items-center gap-4 mt-5">
+                <button 
+                  className={`flex text-xs items-center py-2 px-1 border-solid border justify-center rounded-lg ${
+                    isDarkMode ? 'border-white' : 'border-black'
+                  }`}
+                >
+                  <a href={selectedToken.url} className="flex items-center">
+                    <ExternalLink className='mr-2' size={13} />
+                    DEX
+                  </a>
+                </button>
+
+                <button 
+                  className={`flex text-xs items-center py-2 px-1 border-solid border justify-center rounded-lg ${
+                    isDarkMode ? 'border-white' : 'border-black'
+                  }`}
+                >
+                  <a href={selectedToken?.info?.socials[0]?.url} className="flex items-center">
+                    <Share2 className='mr-2' size={13} />
+                    Social
+                  </a>
+                </button>
+
+                <button 
+                  className={`flex text-xs items-center py-2 px-1 border-solid border justify-center rounded-lg ${
+                    isDarkMode ? 'border-white' : 'border-black'
+                  }`}
+                >
+                  <a href={selectedToken?.info?.websites[0]?.url} className="flex items-center">
+                    <Squirrel className='mr-2' size={13} />
+                    Website
+                  </a>
+                </button>
+              </div>
             </div>
-                </>
-              )}
-            </div>
-          </DialogContent>
-        </Dialog>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog> 
               {/* Bulk Buy Modal */}
               <Dialog open={showBulkBuyModal} onOpenChange={setShowBulkBuyModal}>
                 <DialogContent className="sm:max-w-md">

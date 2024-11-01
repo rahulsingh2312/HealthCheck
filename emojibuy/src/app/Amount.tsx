@@ -22,7 +22,7 @@ const AmountInput: React.FC<AmountInputProps> = ({isdarkmode, value, onChange })
   };
 
   return (
-    <div className="relative flex w-full items-center mb-6">
+    <div className="relative flex w-full items-center">
       <input
         type="text"
         value={value}
