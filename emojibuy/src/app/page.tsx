@@ -145,15 +145,21 @@ const EmojiRace = () => {
   const fetchTokenData = async () => {
     try {
       setIsLoading(true);
-      const tokenIds = TOKEN_CONFIG.map(token => token.id).join(',');
-      console.log('tokenIds', tokenIds);
-      const response = await fetch(`https://api.dexscreener.com/latest/dex/tokens/${tokenIds}`);
-      
+      // Fetch data for each token individually and store promises
+    const tokenDataPromises = TOKEN_CONFIG.map(async (token) => {
+      const response = await fetch(`https://api.dexscreener.com/latest/dex/pairs/solana/${token.id}`);
       if (!response.ok) {
-        throw new Error('Failed to fetch token data');
+        throw new Error(`Failed to fetch data for token ID: ${token.id}`);
       }
-  
-      const data = await response.json();
+      return await response.json();
+    });
+
+    // Await all promises and combine the results into a single array
+    const tokensData = await Promise.all(tokenDataPromises);
+    const combinedData = tokensData.flatMap(data => data.pairs || []);
+
+    console.log('Combined data:', combinedData);
+      const data =  combinedData;
       
       // Map to store unique tokens by ID and pass the entire response
       const uniqueTokens = new Map();
@@ -166,7 +172,7 @@ const EmojiRace = () => {
       let totalVolume = 0;
   
       // Populate unique tokens and calculate market stats in a single pass
-      data.pairs.forEach((pair:any) => {
+      data.forEach((pair:any) => {
         const {info, baseToken, marketCap = 0, volume = {}, priceChange = {} } = pair;
         const tokenAddress = baseToken?.address;
         
