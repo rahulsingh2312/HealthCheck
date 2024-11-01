@@ -17,6 +17,7 @@ const formatNumber = (num: number) => {
 
 import { WalletProvider } from '@solana/wallet-adapter-react';
 import SingleToken from '../PurchaseFunctions/SingleToken';
+import SingleTokenSwapButton from './SingleTokenSwapButton';
 import BundledToken from '../PurchaseFunctions/BundledToken';
 import { TipLinkWalletAdapter } from "@tiplink/wallet-adapter";
 
@@ -607,8 +608,12 @@ const MobileNav = () => (
                   onChange={(value) => setBuyQuantity(value)} 
                 />
               </div>
-
-              <button
+              <SingleTokenSwapButton 
+  tokenAddress={selectedToken?.baseToken.address}
+  solAmount={buyQuantity}  // Amount in SOL 
+  isdarkmode={isDarkMode}
+/>
+              {/* <button
                  onClick={() => SingleToken({ tokenaddress: selectedToken?.baseToken.address , amount: buyQuantity })}
 
                 className={`w-full ${
@@ -616,7 +621,7 @@ const MobileNav = () => (
                 } bg-custom-green hover:bg-green-700 py-3 rounded-lg  font-medium transition-colors`}
               >
                 Buy Now
-              </button>
+              </button> */}
 
               <div className="grid grid-cols-3 justify-center items-center gap-4 mt-5">
                 <button 
