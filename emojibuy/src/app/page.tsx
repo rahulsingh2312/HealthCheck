@@ -13,7 +13,7 @@ const formatNumber = (num: number) => {
   if (num >= 1e9) return (num / 1e9).toFixed(1) + ' B';
   if (num >= 1e6) return (num / 1e6).toFixed(1) + ' M';
   if (num >= 1e3) return (num / 1e3).toFixed(1) + ' K';
-  return num.toLocaleString();
+  return num?.toLocaleString();
 };
 
 import { WalletProvider } from '@solana/wallet-adapter-react';
@@ -89,7 +89,10 @@ const TOKEN_CONFIG = [
   {
     id: "9vNYnBh3A1avzcnRTYW8Wp95JTQLS1GKA9gmF71isGbR",
   },
-
+  {
+id:"9aM8yh9M1ofHPtWPngUnNkWohKoE3RUWufVVGM5vpump",
+  }
+,
   {
     id: "BfUGEJn5RWwPkkFZFgy5H4WAKBDcYryPVxf4eCCC69Pt",
   },
@@ -139,20 +142,130 @@ const EmojiRace = () => {
     volume24h: 0
   });
   const [selectedToken, setSelectedToken] = useState<TokenDetails | null>(null);
+ 
+// Update the fetchHeliusData function to properly handle image URLs
+const fetchHeliusData = async (tokenId: any) => {
+  try {
+    const response = await fetch('https://mainnet.helius-rpc.com/?api-key=215399cd-1d50-4bdf-8637-021503ae6ef3', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        id: 'my-id',
+        method: 'getAsset',
+        params: {
+          id: tokenId
+        },
+      }),
+    });
 
+    if (!response.ok) {
+      throw new Error(`Helius API error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    
+    if (data.error) {
+      throw new Error(data.error.message);
+    }
+
+    // Get the image URL from the Helius response
+    const imageUrl = data.result?.content?.links?.image || 
+                    data.result?.content?.files?.[0]?.uri ||
+                    data.result?.content?.files?.[0]?.cdn_uri ||
+                    '/placeholder-token.png';
+
+    return {
+      pairs: [{
+        baseToken: {
+          address: tokenId,
+          name: data.result?.content?.metadata?.name || 'Unknown Token',
+          symbol: data.result?.content?.metadata?.symbol || '???',
+        },
+        marketCap: data.result?.token_info?.price_info?.price_per_token * (data.result?.token_info?.supply || 0) || 0,
+        volume: { h24: 0 },
+        priceChange: { h24: 0 },
+        priceUsd: data.result?.token_info?.price_info?.price_per_token?.toString() || '0',
+        info: {
+          imageUrl: imageUrl,
+          socials: [],
+          websites: []
+        },
+        isDataFromHelius: true
+      }]
+    };
+  } catch (error) {
+    console.error('Helius API error:', error);
+    return {
+      pairs: [{
+        baseToken: {
+          address: tokenId,
+          name: 'Unknown Token',
+          symbol: '???',
+        },
+        marketCap: 0,
+        volume: { h24: 0 },
+        priceChange: { h24: 0 },
+        priceUsd: '0',
+        info: {
+          imageUrl: '/placeholder-token.png',
+          socials: [],
+          websites: []
+        },
+        isDataFromHelius: true
+      }]
+    };
+  }
+};
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const fetchTokenData = async () => {
     try {
       setIsLoading(true);
+
       // Fetch data for each token individually and store promises
-    const tokenDataPromises = TOKEN_CONFIG.map(async (token) => {
-      const response = await fetch(`https://api.dexscreener.com/latest/dex/pairs/solana/${token.id}`);
-      if (!response.ok) {
-        throw new Error(`Failed to fetch data for token ID: ${token.id}`);
-      }
-      return await response.json();
-    });
+      const tokenDataPromises = TOKEN_CONFIG.map(async (token) => {
+        try {
+          // First try DexScreener
+          const response = await fetch(`https://api.dexscreener.com/latest/dex/pairs/solana/${token.id}`);
+          const data = await response.json();
+
+          // Check if DexScreener returned null or invalid data
+          if (!response.ok || 
+              data.schemaVersion === "1.0.0" && (data.pairs === null || data.pair === null)) {
+            console.log(`DexScreener returned null for ${token.id}, falling back to Helius`);
+            // Fallback to Helius
+            const heliusData = await fetchHeliusData(token.id);
+            return heliusData || {
+              baseToken: {
+                address: token.id,
+                name: (token as any).name || 'Unknown Token',
+                symbol: '???',
+                logoUrl: '/placeholder-token.png'
+              },
+              isDataAvailable: false
+            };
+          }
+
+          return data;
+        } catch (error) {
+          console.error(`Error fetching token ${token.id}:`, error);
+          // Try Helius as fallback
+          const heliusData = await fetchHeliusData(token.id);
+          return heliusData || {
+            baseToken: {
+              address: token.id,
+              name:  'Unknown Token',
+              symbol:  '???',
+              logoUrl:  '/placeholder-token.png'
+            },
+            isDataAvailable: false
+          };
+        }
+      });
+
 
     // Await all promises and combine the results into a single array
     const tokensData = await Promise.all(tokenDataPromises);

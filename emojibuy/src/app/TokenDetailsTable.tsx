@@ -26,7 +26,7 @@ const formatNumber = (num: number) => {
   if (num >= 1e9) return (num / 1e9).toFixed(1) + ' B';
   if (num >= 1e6) return (num / 1e6).toFixed(1) + ' M';
   if (num >= 1e3) return (num / 1e3).toFixed(1) + ' K';
-  return num.toLocaleString();
+  return num?.toLocaleString();
 };
 
 interface TokenDetailsTableProps {
@@ -96,10 +96,10 @@ const TokenDetailsTable: React.FC<TokenDetailsTableProps> = ({ selectedToken, is
             {
               label: "Buy Transactions",
               data: [
-                selectedToken.txns.m5.buys,
-                selectedToken.txns.h1.buys,
-                selectedToken.txns.h6.buys,
-                selectedToken.txns.h24.buys,
+                selectedToken?.txns?.m5?.buys,
+                selectedToken?.txns?.h1?.buys,
+                selectedToken?.txns?.h6?.buys,
+                selectedToken?.txns?.h24?.buys,
               ],
               backgroundColor: 'rgba(54, 162, 235, 0.6)',
               borderColor: 'rgba(54, 162, 235, 1)',
@@ -107,10 +107,10 @@ const TokenDetailsTable: React.FC<TokenDetailsTableProps> = ({ selectedToken, is
             {
               label: "Sell Transactions",
               data: [
-                selectedToken.txns.m5.sells,
-                selectedToken.txns.h1.sells,
-                selectedToken.txns.h6.sells,
-                selectedToken.txns.h24.sells,
+                selectedToken?.txns?.m5?.sells,
+                selectedToken?.txns?.h1?.sells,
+                selectedToken?.txns?.h6?.sells,
+                selectedToken?.txns?.h24?.sells,
               ],
               backgroundColor: 'rgba(255, 99, 132, 0.6)',
               borderColor: 'rgba(255, 99, 132, 1)',
@@ -169,7 +169,7 @@ const TokenDetailsTable: React.FC<TokenDetailsTableProps> = ({ selectedToken, is
           </div>
           <div className="flex justify-between">
             <span className="font-medium text-gray-600 dark:text-gray-300">Liquidity:</span>
-            <span className="font-[510]">${formatNumber(selectedToken.liquidity.usd)}</span>
+            <span className="font-[510]">${formatNumber(selectedToken?.liquidity?.usd)}</span>
             </div>
         </div>
       </div>
