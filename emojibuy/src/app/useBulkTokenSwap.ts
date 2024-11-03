@@ -1,11 +1,20 @@
 import React, { useState } from 'react';
-import { Connection, PublicKey } from '@solana/web3.js';
-import { SystemProgram, TransactionMessage, VersionedTransaction } from '@solana/web3.js';
+import { 
+  Connection, 
+  PublicKey, 
+  SystemProgram, 
+  TransactionMessage, 
+  VersionedTransaction,
+  SendTransactionError
+} from '@solana/web3.js';
 import { createJupiterApiClient, QuoteResponse } from "@jup-ag/api";
 import { useWallet } from '@solana/wallet-adapter-react';
 
 const SOL_MINT = 'So11111111111111111111111111111111111111112';
-const connection = new Connection('https://mainnet.helius-rpc.com/?api-key=215399cd-1d50-4bdf-8637-021503ae6ef3');
+const connection = new Connection(
+  'https://mainnet.helius-rpc.com/?api-key=215399cd-1d50-4bdf-8637-021503ae6ef3',
+  "confirmed"
+);
 const jupiterQuoteApi = createJupiterApiClient();
 
 interface TokenSwapInfo {
@@ -14,25 +23,30 @@ interface TokenSwapInfo {
   emoji?: string;
 }
 
+interface SwapResult {
+  signature: string;
+  tokenId: string;
+  status: 'success' | 'error';
+  error?: string;
+}
+
 export const useBulkTokenSwap = () => {
-  const { publicKey, signAllTransactions, sendTransaction } = useWallet();
+  const { publicKey, signAllTransactions } = useWallet();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [swapResults, setSwapResults] = useState<SwapResult[]>([]);
 
   const getSwapQuotes = async (tokens: TokenSwapInfo[]) => {
     try {
-        console.log('tokens:', tokens);
       const quotes: QuoteResponse[] = [];
-
+      
       for (const token of tokens) {
-        // Validate token address
         if (!PublicKey.isOnCurve(token.id)) {
           throw new Error(`Invalid token address: ${token.id}`);
         }
 
-        // Convert SOL to lamports (1 SOL = 1 billion lamports)
         const amountInLamports = Math.floor(token.amount * 1000000000);
-
+        
         const quoteParams = {
           inputMint: SOL_MINT,
           outputMint: token.id,
@@ -55,56 +69,103 @@ export const useBulkTokenSwap = () => {
     }
   };
 
+  const confirmTransaction = async (signature: string): Promise<boolean> => {
+    try {
+      const confirmation = await connection.confirmTransaction({
+        signature,
+        lastValidBlockHeight: await connection.getBlockHeight(),
+        blockhash: (await connection.getLatestBlockhash()).blockhash
+      }, 'confirmed');
+
+      if (confirmation.value.err) {
+        throw new Error(`Transaction failed: ${confirmation.value.err.toString()}`);
+      }
+
+      return true;
+    } catch (err) {
+      console.error('Transaction confirmation error:', err);
+      return false;
+    }
+  };
+
   const executeBulkSwap = async (tokens: TokenSwapInfo[]) => {
-    if (!publicKey || !signAllTransactions || !sendTransaction) {
+    if (!publicKey || !signAllTransactions) {
       throw new Error('Wallet not connected');
     }
 
     setLoading(true);
     setError(null);
+    setSwapResults([]);
 
     try {
-      // Get swap quotes for all tokens
       const quotes = await getSwapQuotes(tokens);
+      const results: SwapResult[] = [];
 
-      // Prepare swap transactions
-      const swapTransactions: VersionedTransaction[] = [];
+      for (let i = 0; i < quotes.length; i++) {
+        const quote = quotes[i];
+        const token = tokens[i];
 
-      for (const quote of quotes) {
-        // Get swap transaction for each quote
-        const swapResponse = await jupiterQuoteApi.swapPost({
-          swapRequest: {
-            quoteResponse: quote,
-            userPublicKey: publicKey.toString(),
-            dynamicComputeUnitLimit: true,
-            prioritizationFeeLamports: 'auto',
-          },
-        });
+        try {
+          // Get swap transaction
+          const swapResponse = await jupiterQuoteApi.swapPost({
+            swapRequest: {
+              quoteResponse: quote,
+              userPublicKey: publicKey.toString(),
+              dynamicComputeUnitLimit: true,
+              prioritizationFeeLamports: 'auto',
+            },
+          });
 
-        if (!swapResponse || !swapResponse.swapTransaction) {
-          throw new Error('Failed to retrieve swap transaction data');
+          if (!swapResponse || !swapResponse.swapTransaction) {
+            throw new Error('Failed to retrieve swap transaction data');
+          }
+
+          // Deserialize and sign transaction
+          const swapTransactionBuf = Buffer.from(swapResponse.swapTransaction, 'base64');
+          const transaction = VersionedTransaction.deserialize(swapTransactionBuf);
+          const signedTx = (await signAllTransactions([transaction]))[0];
+
+          // Send and confirm transaction
+          const signature = await connection.sendRawTransaction(signedTx.serialize(), {
+            skipPreflight: false,
+            maxRetries: 3,
+            preflightCommitment: 'confirmed'
+          });
+
+          // Wait for confirmation
+          const confirmed = await confirmTransaction(signature);
+
+          results.push({
+            signature,
+            tokenId: token.id,
+            status: confirmed ? 'success' : 'error',
+            error: confirmed ? undefined : 'Transaction failed to confirm'
+          });
+
+        } catch (err) {
+          console.error(`Swap error for token ${token.id}:`, err);
+          results.push({
+            signature: '',
+            tokenId: token.id,
+            status: 'error',
+            error: err instanceof Error ? err.message : 'Unknown error occurred'
+          });
         }
-
-        // Deserialize transaction
-        const swapTransactionBuf = Buffer.from(swapResponse.swapTransaction, 'base64');
-        const transaction = VersionedTransaction.deserialize(swapTransactionBuf);
-        swapTransactions.push(transaction);
       }
 
-      // Sign and send all transactions
-      const signedTxs = await signAllTransactions(swapTransactions);
+      setSwapResults(results);
+      const failedSwaps = results.filter(r => r.status === 'error');
       
-      // You might want to send transactions sequentially or in parallel
-      // This is a simple sequential sending approach
-    //   for (const tx of signedTxs) {
-    //     await sendTransaction(tx);
-    //   }
+      if (failedSwaps.length > 0) {
+        setError(`${failedSwaps.length} swap(s) failed. Check swapResults for details.`);
+      }
 
-      console.log('Bulk swap successful');
-      return signedTxs;
+      return results;
+
     } catch (err) {
       console.error('Bulk swap error:', err);
-      setError(err instanceof Error ? err.message : 'Bulk swap failed');
+      const errorMessage = err instanceof Error ? err.message : 'Bulk swap failed';
+      setError(errorMessage);
       throw err;
     } finally {
       setLoading(false);
@@ -115,5 +176,6 @@ export const useBulkTokenSwap = () => {
     executeBulkSwap,
     loading,
     error,
+    swapResults,
   };
 };

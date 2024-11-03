@@ -1,19 +1,33 @@
 import React, { useState } from 'react';
-import { Connection, PublicKey } from '@solana/web3.js';
-import { SystemProgram, TransactionMessage, VersionedTransaction } from '@solana/web3.js';
-
+import { 
+  Connection, 
+  PublicKey,
+  SystemProgram, 
+  TransactionMessage, 
+  VersionedTransaction,
+  SendTransactionError
+} from '@solana/web3.js';
 import { createJupiterApiClient, QuoteResponse } from "@jup-ag/api";
 import { useWallet } from '@solana/wallet-adapter-react';
 
 const SOL_MINT = 'So11111111111111111111111111111111111111112';
-
-const connection = new Connection('https://mainnet.helius-rpc.com/?api-key=215399cd-1d50-4bdf-8637-021503ae6ef3');
+const connection = new Connection(
+  'https://mainnet.helius-rpc.com/?api-key=215399cd-1d50-4bdf-8637-021503ae6ef3',
+  "confirmed"
+);
 const jupiterQuoteApi = createJupiterApiClient();
 
+interface SwapResult {
+  signature: string;
+  status: 'success' | 'error';
+  error?: string;
+}
+
 export const useSingleTokenSwap = () => {
-  const { publicKey, signAllTransactions, sendTransaction } = useWallet();
+  const { publicKey, signAllTransactions } = useWallet();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [swapResult, setSwapResult] = useState<SwapResult | null>(null);
 
   const getSwapQuote = async (tokenAddress: string, amountInSol: number) => {
     try {
@@ -21,7 +35,6 @@ export const useSingleTokenSwap = () => {
         throw new Error('Invalid token address');
       }
 
-      // Convert SOL to lamports (1 SOL = 1 billion lamports)
       const amountInLamports = Math.floor(amountInSol * 1000000000);
 
       const quoteParams = {
@@ -31,10 +44,8 @@ export const useSingleTokenSwap = () => {
       };
 
       const quote = await jupiterQuoteApi.quoteGet(quoteParams);
-      console.log(quote, 'Quote');
-      
-      // Ensure quote is not null and has necessary data
-      if (!quote || !quote) {
+
+      if (!quote) {
         throw new Error('Failed to get valid quote data');
       }
 
@@ -45,18 +56,49 @@ export const useSingleTokenSwap = () => {
     }
   };
 
-  const executeSwap = async (tokenAddress: string, amountInSol: number) => {
-    if (!publicKey || !signAllTransactions || !sendTransaction) {
+  const confirmTransaction = async (signature: string): Promise<boolean> => {
+    try {
+      const latestBlockhash = await connection.getLatestBlockhash();
+      
+      const confirmation = await connection.confirmTransaction({
+        signature,
+        lastValidBlockHeight: await connection.getBlockHeight(),
+        blockhash: latestBlockhash.blockhash
+      }, 'confirmed');
+
+      if (confirmation.value.err) {
+        throw new Error(`Transaction failed: ${confirmation.value.err.toString()}`);
+      }
+
+      // Verify transaction was successful
+      const txResponse = await connection.getTransaction(signature, {
+        maxSupportedTransactionVersion: 0
+      });
+
+      if (!txResponse || txResponse.meta?.err) {
+        throw new Error('Transaction verification failed');
+      }
+
+      return true;
+    } catch (err) {
+      console.error('Transaction confirmation error:', err);
+      return false;
+    }
+  };
+
+  const executeSwap = async (tokenAddress: string, amountInSol: number): Promise<SwapResult> => {
+    if (!publicKey || !signAllTransactions) {
       throw new Error('Wallet not connected');
     }
 
     setLoading(true);
     setError(null);
+    setSwapResult(null);
 
     try {
       // Get swap quote
       const quote = await getSwapQuote(tokenAddress, amountInSol);
-      console.log(quote, 'Quote');
+      console.log('Received quote:', quote);
 
       // Get swap transaction
       const swapResponse = await jupiterQuoteApi.swapPost({
@@ -68,27 +110,55 @@ export const useSingleTokenSwap = () => {
         },
       });
 
-      // Ensure swapResponse has the necessary transaction data
       if (!swapResponse || !swapResponse.swapTransaction) {
         throw new Error('Failed to retrieve swap transaction data');
       }
 
-      // Deserialize and send transaction
+      // Deserialize transaction
       const swapTransactionBuf = Buffer.from(swapResponse.swapTransaction, 'base64');
-      console.log(swapTransactionBuf, 'Swap Transaction Buffer');
-      console.log(swapResponse, 'Swap Response');
-
       const transaction = VersionedTransaction.deserialize(swapTransactionBuf);
-      console.log(transaction, 'Deserialized Transaction');
 
-      // Sign and send
-      const signedTx = await signAllTransactions([transaction]);
-      console.log('Swap successful:', signedTx);
+      // Sign transaction
+      const [signedTx] = await signAllTransactions([transaction]);
 
-      return signedTx;
+      // Send transaction
+      const signature = await connection.sendRawTransaction(signedTx.serialize(), {
+        skipPreflight: false,
+        maxRetries: 3,
+        preflightCommitment: 'confirmed'
+      });
+
+      console.log('Transaction sent with signature:', signature);
+
+      // Wait for confirmation
+      const confirmed = await confirmTransaction(signature);
+
+      const result: SwapResult = {
+        signature,
+        status: confirmed ? 'success' : 'error',
+        error: confirmed ? undefined : 'Transaction failed to confirm'
+      };
+
+      setSwapResult(result);
+
+      if (!confirmed) {
+        throw new Error('Transaction failed to confirm');
+      }
+
+      return result;
+
     } catch (err) {
       console.error('Swap error:', err);
-      setError(err instanceof Error ? err.message : 'Swap failed');
+      const errorMessage = err instanceof Error ? err.message : 'Swap failed';
+      setError(errorMessage);
+      
+      const failedResult: SwapResult = {
+        signature: '',
+        status: 'error',
+        error: errorMessage
+      };
+      
+      setSwapResult(failedResult);
       throw err;
     } finally {
       setLoading(false);
@@ -99,5 +169,6 @@ export const useSingleTokenSwap = () => {
     executeSwap,
     loading,
     error,
+    swapResult,
   };
 };
