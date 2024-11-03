@@ -663,46 +663,50 @@ const MobileNav = () => (
           ) : (
             <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-4">
               {filteredData.map((token , index) => (
-                <div
-                  key={token.id || index}
-                  onClick={() => {
-                    if (isSelectionMode) {
-                      toggleEmojiSelection({
-                        id: token.baseToken?.address || '',
-                        emoji: token?.info.imageUrl || '',
-                        marketCap: token.marketCap || 0,
-                        price: token.priceUsd || '',
-                        type:  'unknown',
-                        change24h: token.priceChange?.h24 || 0,
-                        xPosition: generateXPosition(token.baseToken?.address || '', 0, tokens.length)
-                      });
-                      setSelectedToken(token);
-                    } else {
-                      setSelectedToken(token);
-                      setShowBuyModal(true);
-                    }
-                  }}
-                  className={`cursor-pointer p-4 rounded-lg ${
-                    isSelectionMode && selectedEmojis.some(e => e.id === token.baseToken?.address)
-                      ? 'bg-custom-green/40' // Custom green background for selected emojis in selection mode
-                      : isDarkMode
-                      ? 'hover:bg-gray-800' // Dark mode hover effect
-                      : 'hover:bg-gray-100' // Light mode hover effect
-                  }`}
-                  
-                >
-                  <div className="flex flex-col items-center">
-                    <span className="text-4xl mb-2"><img className=' ' src={token?.info?.imageUrl}></img></span>
-                    <span className="text-xs text-gray-500">
-                       ${formatNumber(token.marketCap)}
-                    </span>
-                    <span className={`text-xs ${token.priceChange.h24
- >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-                    {console.log('token', token)}
-                      {token.priceChange.h24.toFixed(2)}%
-                    </span>
-                  </div>
-                </div>
+               <div
+               key={token.id || index}
+               onClick={() => {
+                 if (isSelectionMode) {
+                   toggleEmojiSelection({
+                     id: token.baseToken?.address || '',
+                     emoji: token?.info.imageUrl || '',
+                     marketCap: token.marketCap || 0,
+                     price: token.priceUsd || '',
+                     type: 'unknown',
+                     change24h: token.priceChange?.h24 || 0,
+                     xPosition: generateXPosition(token.baseToken?.address || '', 0, tokens.length)
+                   });
+                   setSelectedToken(token);
+                 } else {
+                   setSelectedToken(token);
+                   setShowBuyModal(true);
+                 }
+               }}
+               className={`relative 
+                w-24 h-24       // Small screens (default)
+                sm:w-32 sm:h-32 // Small screens and above
+                md:w-40 md:h-40 // Medium screens and above
+ // Extra-large screens and above rounded-full p-2 ${
+                 isSelectionMode
+                   ? selectedEmojis.some(e => e.id === token.baseToken?.address)
+                     ? 'bg-custom-green/40' // Circle background for selected state
+                     : 'bg-red-500/40' // Red circle background for unselected state in selection mode
+                   : '' // No background when not in selection mode
+               } flex flex-col items-center justify-center`} // Centers items
+             >
+               <div className="flex flex-col items-center">
+                 <span className="text-4xl mb-2 flex justify-center items-center">
+                   <img className="w-8 h-8 md:w-12 md:h-12" src={token?.info?.imageUrl} alt="" />
+                 </span>
+                 <span className="text-xs text-gray-500 text-center">
+                   ${formatNumber(token.marketCap)}
+                 </span>
+                 <span className={`text-xs ${token.priceChange.h24 >= 0 ? 'text-green-500' : 'text-red-500'} text-center`}>
+                   {token.priceChange.h24.toFixed(2)}%
+                 </span>
+               </div>
+             </div>
+             
               ))}
             </div>
           )}
@@ -831,7 +835,7 @@ const MobileNav = () => (
                     <img className="w-10" src={emoji.emoji} alt="" />
                   </span>
                   <p className="mt-2 text-xs text-gray-400">
-                    {tokensPerEmoji.toFixed(2)} 
+                    {formatNumber(tokensPerEmoji)} 
                     &nbsp; tokens
                   </p>
                 </div>
