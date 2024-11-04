@@ -31,14 +31,18 @@ const CreateEmoji: React.FC<CreateEmojiProps> = ({
         setEmojisPerLine(9);
         setPickerWidth('350px');
       } else if (width >= 640) { // sm breakpoint
+        setEmojisPerLine(9);
+        setPickerWidth('350px');
+      } else if (width >= 410) { // xs breakpoint
+        setEmojisPerLine(9);
+        setPickerWidth('350px');
+      }
+      else if (width >= 385) { // xs breakpoint
         setEmojisPerLine(7);
-        setPickerWidth('280px');
-      } else if (width >= 480) { // xs breakpoint
-        setEmojisPerLine(7);
-        setPickerWidth('260px');
+        setPickerWidth('300px');
       } else {
         setEmojisPerLine(7);
-        setPickerWidth('260px');
+        setPickerWidth('270px');
       }
     };
 
@@ -68,7 +72,7 @@ const CreateEmoji: React.FC<CreateEmojiProps> = ({
 
   return (
     <Dialog open={showCreateModal} onOpenChange={setShowCreateModal}>
-      <DialogContent className="sm:max-w-md max-w-xl md:max-h-[85%] max-h-[75%] flex flex-col">
+      <DialogContent className="sm:max-w-md max-w-xl md:max-h-[85%] max-h-[80%] flex flex-col">
         <DialogHeader>
           <DialogTitle>Create New Emoji</DialogTitle>
         </DialogHeader>
