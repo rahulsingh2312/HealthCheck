@@ -16,10 +16,9 @@ const formatNumber = (num: number) => {
   return num?.toLocaleString();
 };
 
+import CreateEmoji from './CreateEmoji';
 import { WalletProvider } from '@solana/wallet-adapter-react';
-import SingleToken from '../PurchaseFunctions/SingleToken';
 import SingleTokenSwapButton from './SingleTokenSwapButton';
-import BundledToken from '../PurchaseFunctions/BundledToken';
 import { TipLinkWalletAdapter } from "@tiplink/wallet-adapter";
 
 import { WalletModalProvider, TipLinkWalletAutoConnectV2 } from '@tiplink/wallet-adapter-react-ui';
@@ -882,29 +881,7 @@ const MobileNav = () => (
               )}
 
       {/* Create Token Modal */}
-      <Dialog open={showCreateModal} onOpenChange={setShowCreateModal}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Create New Token</DialogTitle>
-          </DialogHeader>
-          <div className="p-6">
-            <input
-              type="text"
-              placeholder="Select emoji..."
-              className="w-full bg-gray-800 rounded-lg px-4 py-2 mb-4"
-            />
-            <input
-              type="number"
-              placeholder="Initial price..."
-              className="w-full bg-gray-800 rounded-lg px-4 py-2 mb-4"
-            />
-            <button className="w-full bg-custom-green hover:bg-purple-700 py-3 rounded-lg font-medium transition-colors">
-              Create Token
-            </button>
-          </div>
-        </DialogContent>
-
-      </Dialog>
+      <CreateEmoji showCreateModal={showCreateModal} setShowCreateModal={setShowCreateModal} isDarkMode={isDarkMode}  />
       <MarketInfo marketCap={formatNumber(marketStats.totalMarketCap)} topgain={marketStats.topGainer} gainerPercentage={marketStats.topGainerPercentage.toFixed(2)} />
 
     </div>
