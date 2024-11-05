@@ -14,6 +14,7 @@
     "@jup-ag/api": "^6.0.29",
     "@radix-ui/react-dialog": "^1.1.2",
     "@radix-ui/react-icons": "^1.3.0",
+    "@solana/spl-token": "^0.4.9",
     "@solana/wallet-adapter-react": "^0.15.35",
     "@solana/wallet-adapter-react-ui": "^0.9.35",
     "@tiplink/wallet-adapter": "^2.1.21",

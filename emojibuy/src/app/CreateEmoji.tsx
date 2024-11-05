@@ -3,7 +3,20 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { ChevronDown, ChevronUp, Twitter, Globe } from 'lucide-react';
 import data from '@emoji-mart/data';
 import Picker from '@emoji-mart/react';
-
+import { Connection, Keypair, SystemProgram, Transaction, sendAndConfirmTransaction } from '@solana/web3.js';
+import {
+  TOKEN_2022_PROGRAM_ID,
+  createInitializeMintInstruction,
+  mintTo,
+  createAssociatedTokenAccountIdempotent,
+  createInitializeMetadataPointerInstruction,
+  createInitializeInstruction,
+  createUpdateFieldInstruction,
+  getMintLen,
+  ExtensionType,
+} from '@solana/spl-token';
+import { useWallet } from '@solana/wallet-adapter-react';
+import createTokenAndMint from './CreateTokenAndMint';
 interface CreateEmojiProps {
   showCreateModal: boolean;
   setShowCreateModal: (value: boolean) => void;
@@ -15,6 +28,7 @@ const CreateEmoji: React.FC<CreateEmojiProps> = ({
   setShowCreateModal,
   isDarkMode
 }) => {
+  const { publicKey, signAllTransactions } = useWallet();
   const [selectedEmoji, setSelectedEmoji] = useState('');
   const [initialPrice, setInitialPrice] = useState('');
   const [name, setName] = useState('');
@@ -55,21 +69,33 @@ const CreateEmoji: React.FC<CreateEmojiProps> = ({
     setSelectedEmoji(emoji.native);
   };
 
-  const handleCreateToken = () => {
-    if (selectedEmoji && initialPrice) {
-      console.log('Creating token with:', {
-        emoji: selectedEmoji,
-        price: initialPrice,
-        name,
+  const handleCreateToken = async () => {
+    if (publicKey && selectedEmoji && initialPrice) {
+      const tokenMetadata = {
+        updateAuthority: publicKey.toString(),
+        name: name,
+        symbol: selectedEmoji,
+        uri: `https://emoji.beeimg.com/${selectedEmoji}`,
         socials: {
           twitter,
           website
         }
-      });
+      };
+  
+      console.log('Created tokenMetadata:', tokenMetadata);
+  
+      try {
+        const [initSig, mintSig] = await createTokenAndMint(tokenMetadata, { publicKey, signAllTransactions });
+        console.log('Token created successfully:', initSig, mintSig);
+        setShowCreateModal(false);
+      } catch (error) {
+        console.error('Failed to create token:', error);
+      }
       setShowCreateModal(false);
     }
   };
 
+ 
   return (
     <Dialog open={showCreateModal} onOpenChange={setShowCreateModal}>
       <DialogContent className="sm:max-w-md max-w-xl md:max-h-[85%] max-h-[80%] flex flex-col">
