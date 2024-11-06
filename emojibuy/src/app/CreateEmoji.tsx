@@ -28,7 +28,7 @@ const CreateEmoji: React.FC<CreateEmojiProps> = ({
   setShowCreateModal,
   isDarkMode
 }) => {
-  const { publicKey, signAllTransactions } = useWallet();
+  const { publicKey, signAllTransactions ,signTransaction } = useWallet();
   const [selectedEmoji, setSelectedEmoji] = useState('');
   const [initialPrice, setInitialPrice] = useState('');
   const [name, setName] = useState('');
@@ -72,7 +72,7 @@ const CreateEmoji: React.FC<CreateEmojiProps> = ({
   const handleCreateToken = async () => {
     if (publicKey && selectedEmoji && initialPrice) {
       const tokenMetadata = {
-        updateAuthority: publicKey.toString(),
+        // updateAuthority: publicKey.toString(),
         name: name,
         symbol: selectedEmoji,
         uri: `https://emoji.beeimg.com/${selectedEmoji}`,
@@ -85,7 +85,7 @@ const CreateEmoji: React.FC<CreateEmojiProps> = ({
       console.log('Created tokenMetadata:', tokenMetadata);
   
       try {
-        const [initSig, mintSig] = await createTokenAndMint(tokenMetadata, { publicKey, signAllTransactions });
+        const [initSig, mintSig] = await createTokenAndMint(tokenMetadata, { publicKey,signTransaction });
         console.log('Token created successfully:', initSig, mintSig);
         setShowCreateModal(false);
       } catch (error) {

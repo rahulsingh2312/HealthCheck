@@ -1,102 +1,174 @@
-import { Connection, Keypair, SystemProgram, Transaction, sendAndConfirmTransaction } from '@solana/web3.js';
+import {
+  Connection,
+  Keypair,
+  SystemProgram,
+  Transaction,
+  PublicKey,
+  LAMPORTS_PER_SOL
+} from '@solana/web3.js';
+
 import {
   TOKEN_2022_PROGRAM_ID,
   createInitializeMintInstruction,
-  mintTo,
+  createMintToInstruction,
   createAssociatedTokenAccountIdempotent,
-  createInitializeMetadataPointerInstruction,
+  ExtensionType,
+  getMintLen
+} from '@solana/spl-token';
+
+import {
   createInitializeInstruction,
   createUpdateFieldInstruction,
-  getMintLen,
-  ExtensionType,
-} from '@solana/spl-token';
-import { LAMPORTS_PER_SOL } from '@solana/web3.js';
-const createTokenAndMint = async (metadata: any, wallet: any): Promise<[string, string]> => {
-    const connection = new Connection("https://devnet.helius-rpc.com/?api-key=215399cd-1d50-4bdf-8637-021503ae6ef3", 'confirmed');
-    const admin = wallet.publicKey;
-    const mintKeypair = Keypair.generate();
-    console.log('mintKeypair', mintKeypair.publicKey.toBase58());
-    const mint = mintKeypair.publicKey;
+} from '@solana/spl-token-metadata';
+
+async function createTokenAndMint(
+  metadata: any,
+  wallet: { 
+    publicKey: PublicKey; 
+    signTransaction?: (tx: Transaction) => Promise<Transaction>; 
+  }
+): Promise<[string, string]> {
+  const connection = new Connection("https://devnet.helius-rpc.com/?api-key=215399cd-1d50-4bdf-8637-021503ae6ef3", 'confirmed');
   
-    const mintLen = await getMintLen([ExtensionType.MetadataPointer]);
-    const mintLamports = await connection.getMinimumBalanceForRentExemption(mintLen);
-  
-    const transaction = new Transaction().add(
+  const mintKeypair = Keypair.generate();
+  const mint = mintKeypair.publicKey;
+  console.log('Creating token with mint:', mint.toBase58());
+
+  try {
+    // Step 1: Create mint account
+    const extensions = [ExtensionType.MetadataPointer];
+    const mintSpace = getMintLen(extensions);
+    const mintLamports = await connection.getMinimumBalanceForRentExemption(mintSpace);
+
+    const createAccountTx = new Transaction().add(
       SystemProgram.createAccount({
-        fromPubkey: admin,
+        fromPubkey: wallet.publicKey,
         newAccountPubkey: mint,
-        space: mintLen,
+        space: mintSpace,
         lamports: mintLamports,
         programId: TOKEN_2022_PROGRAM_ID,
-      }),
-      createInitializeMetadataPointerInstruction(
-        mint,
-        admin,
-        mint,
-        TOKEN_2022_PROGRAM_ID,
-      ),
+      })
+    );
+
+    const { blockhash } = await connection.getLatestBlockhash();
+    createAccountTx.recentBlockhash = blockhash;
+    createAccountTx.feePayer = wallet.publicKey;
+    createAccountTx.sign(mintKeypair);
+
+    if (!wallet.signTransaction) {
+      throw new Error('wallet.signTransaction is undefined');
+    }
+    const signedCreateAccountTx = await wallet.signTransaction(createAccountTx);
+    const createAccountSig = await connection.sendRawTransaction(
+      signedCreateAccountTx.serialize(),
+      { skipPreflight: false }
+    );
+    await connection.confirmTransaction(createAccountSig);
+    console.log('Account created:', createAccountSig);
+
+    // Step 2: Initialize mint with metadata pointer
+    const initMintTx = new Transaction().add(
       createInitializeMintInstruction(
         mint,
-        6, // Decimals
-        admin,
-        null,
-        TOKEN_2022_PROGRAM_ID,
-      ),
+        6, // decimals
+        wallet.publicKey,
+        null, // freeze authority
+        TOKEN_2022_PROGRAM_ID
+      )
+    );
+
+    const mintBlockhash = await connection.getLatestBlockhash();
+    initMintTx.recentBlockhash = mintBlockhash.blockhash;
+    initMintTx.feePayer = wallet.publicKey;
+
+    const signedInitMintTx = await wallet.signTransaction(initMintTx);
+    const initMintSig = await connection.sendRawTransaction(
+      signedInitMintTx.serialize(),
+      { skipPreflight: false }
+    );
+    await connection.confirmTransaction(initMintSig);
+    console.log('Mint initialized:', initMintSig);
+
+    // Step 3: Initialize metadata pointer
+    const metadataPointerTx = new Transaction().add(
       createInitializeInstruction({
         programId: TOKEN_2022_PROGRAM_ID,
         metadata: mint,
-        updateAuthority: admin,
+        updateAuthority: wallet.publicKey,
         mint: mint,
-        mintAuthority: admin,
+        mintAuthority: wallet.publicKey,
         name: metadata.name,
         symbol: metadata.symbol,
         uri: metadata.uri,
-      }),
-      createUpdateFieldInstruction({
-        programId: TOKEN_2022_PROGRAM_ID,
-        metadata: mint,
-        updateAuthority: admin,
-        field: metadata.socials.twitter || '',
-        value: metadata.socials.website || '',
-      }),
+      })
     );
-  
-    // Fetch and set recent blockhash and fee payer
-    const { blockhash } = await connection.getLatestBlockhash('confirmed');
-    transaction.recentBlockhash = blockhash;
-    transaction.feePayer = admin;
-  
-    const signers = [mintKeypair];
-    
-    try {
-      // Sign transaction with the wallet
-      const txn = await wallet.signAllTransactions([transaction]);
-      const initSig = await sendAndConfirmTransaction(connection, txn[0], signers, { commitment: 'confirmed', skipPreflight: false });
-  
-      // Create and fund associated token account
-      const sourceAccount = await createAssociatedTokenAccountIdempotent(
-        connection, wallet, mint, wallet.publicKey, {}, TOKEN_2022_PROGRAM_ID
-      );
-  
-      // Send SOL to the new token account (e.g., 0.001 SOL)
-      const fundTransaction = new Transaction().add(
-        SystemProgram.transfer({
-          fromPubkey: admin,
-          toPubkey: sourceAccount,
-          lamports: 0.001 * LAMPORTS_PER_SOL, // Adjust as needed
+
+    if (metadata.socials?.twitter || metadata.socials?.website) {
+      metadataPointerTx.add(
+        createUpdateFieldInstruction({
+          programId: TOKEN_2022_PROGRAM_ID,
+          metadata: mint,
+          updateAuthority: wallet.publicKey,
+          field: metadata.socials.twitter || '',
+          value: metadata.socials.website || '',
         })
       );
-  
-      const fundTx = await wallet.signAllTransactions([fundTransaction]);
-      await sendAndConfirmTransaction(connection, fundTx[0], [wallet.payer], { commitment: 'confirmed' });
-  
-      // Mint tokens
-      const mintSig = await mintTo(connection, wallet, mint, sourceAccount, wallet, parseInt(metadata.price) * 1_000_000);
-  
-      return [initSig, mintSig];
-    } catch (error) {
-      console.error('Failed to create token:', error);
-      throw error;
     }
-  };
+
+    const metadataBlockhash = await connection.getLatestBlockhash();
+    metadataPointerTx.recentBlockhash = metadataBlockhash.blockhash;
+    metadataPointerTx.feePayer = wallet.publicKey;
+
+    const signedMetadataPointerTx = await wallet.signTransaction(metadataPointerTx);
+    const metadataPointerSig = await connection.sendRawTransaction(
+      signedMetadataPointerTx.serialize(),
+      { skipPreflight: false }
+    );
+    await connection.confirmTransaction(metadataPointerSig);
+    console.log('Metadata pointer initialized:', metadataPointerSig);
+
+    // Step 4: Mint tokens
+    const sourceAccount = await createAssociatedTokenAccountIdempotent(
+      connection,
+      wallet as any,
+      mint,
+      wallet.publicKey,
+      {},
+      TOKEN_2022_PROGRAM_ID
+    );
+
+    const mintTokensTx = new Transaction().add(
+      createMintToInstruction(
+        mint,
+        sourceAccount,
+        wallet.publicKey,
+        parseInt(metadata.price || '1000000'),
+        [],
+        TOKEN_2022_PROGRAM_ID
+      )
+    );
+
+    const mintTokensBlockhash = await connection.getLatestBlockhash();
+    mintTokensTx.recentBlockhash = mintTokensBlockhash.blockhash;
+    mintTokensTx.feePayer = wallet.publicKey;
+
+    const signedMintTokensTx = await wallet.signTransaction(mintTokensTx);
+    const mintTokensSig = await connection.sendRawTransaction(
+      signedMintTokensTx.serialize(),
+      { skipPreflight: false }
+    );
+    await connection.confirmTransaction(mintTokensSig);
+    console.log('Tokens minted:', mintTokensSig);
+
+    return [createAccountSig, mintTokensSig];
+
+  } catch (error) {
+    console.error('Detailed error:', error);
+    if (error ) {
+      console.error('Transaction Logs:', error);
+    }
+    throw error;
+  }
+}
+
 export default createTokenAndMint;
