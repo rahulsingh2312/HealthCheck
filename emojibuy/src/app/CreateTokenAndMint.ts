@@ -65,8 +65,7 @@ async function createTokenAndMint(
     symbol: metadata.symbol,
     uri: `https://emoji.beeimg.com/${metadata.symbol}/100`,
     additionalMetadata: [
-      ['twitter', metadata.socials.twitter || ''],
-      ['website', metadata.socials.website || '']
+      ['',''],
     ],
   };
 
@@ -82,7 +81,7 @@ async function createTokenAndMint(
   // Create transaction
   const transaction = new Transaction().add(
     SystemProgram.createAccount({
-      fromPubkey: wallet.publicKey,
+      fromPubkey: admin.publicKey,
       newAccountPubkey: mint,
       space: mintLen,
       lamports: mintLamports,
@@ -90,14 +89,14 @@ async function createTokenAndMint(
     }),
     createInitializeMetadataPointerInstruction(
       mint,
-      wallet.publicKey,
+      admin.publicKey,
       mint,
       TOKEN_2022_PROGRAM_ID,
     ),
     createInitializeTransferFeeConfigInstruction(
       mintKeypair.publicKey,
-      wallet.publicKey,
-      wallet.publicKey,
+      admin.publicKey,
+      admin.publicKey,
       feeBasisPoints,
       maxFee,
       TOKEN_2022_PROGRAM_ID,
@@ -105,16 +104,16 @@ async function createTokenAndMint(
     createInitializeMintInstruction(
       mint,
       decimals,
-      wallet.publicKey,
+      admin.publicKey,
       null,
       TOKEN_2022_PROGRAM_ID,
     ),
     createInitializeInstruction({
       programId: TOKEN_2022_PROGRAM_ID,
       metadata: mint,
-      updateAuthority: wallet.publicKey,
+      updateAuthority: admin.publicKey,
       mint: mint,
-      mintAuthority: wallet.publicKey,
+      mintAuthority: admin.publicKey,
       name: tokenMetadata.name,
       symbol: tokenMetadata.symbol,
       uri: tokenMetadata.uri,
@@ -196,29 +195,6 @@ async function createTokenAndMint(
    wallet.publicKey,
    false
  );
-
- // Check if WSOL account exists, if not create it
- try {
-   const wsolAccountInfo = await connection.getAccountInfo(wrappedSolAccount);
-   if (!wsolAccountInfo) {
-     const createWSOLAtaTx = new Transaction().add(
-       createAssociatedTokenAccountInstruction(
-         wallet.publicKey,
-         wrappedSolAccount,
-         wallet.publicKey,
-         wrappedSolMint
-       )
-     );
-     createWSOLAtaTx.recentBlockhash = (await connection.getLatestBlockhash()).blockhash;
-     createWSOLAtaTx.feePayer = wallet.publicKey;
-     
-     const signedWSOLAtaTx = await wallet.signTransaction(createWSOLAtaTx);
-     const wsolAtaSig = await connection.sendRawTransaction(signedWSOLAtaTx.serialize());
-     await connection.confirmTransaction(wsolAtaSig);
-   }
- } catch (error) {
-   console.log("WSOL account might already exist, continuing...");
- }
 
  // Create Pool
  try {
