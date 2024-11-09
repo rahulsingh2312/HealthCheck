@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { ChevronDown, ChevronUp, Twitter, Globe } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../components/ui/dialog';
+import { ChevronDown, ChevronUp, Twitter, Globe, Wallet } from 'lucide-react';
 import data from '@emoji-mart/data';
 import Picker from '@emoji-mart/react';
 import { Connection, Keypair, SystemProgram, Transaction, sendAndConfirmTransaction } from '@solana/web3.js';
@@ -17,6 +17,7 @@ import {
 } from '@solana/spl-token';
 import { useWallet } from '@solana/wallet-adapter-react';
 import createTokenAndMint from './CreateTokenAndMint';
+import { metadata } from './layout';
 interface CreateEmojiProps {
   showCreateModal: boolean;
   setShowCreateModal: (value: boolean) => void;
@@ -70,9 +71,8 @@ const CreateEmoji: React.FC<CreateEmojiProps> = ({
   };
 
   const handleCreateToken = async () => {
-    if (publicKey && selectedEmoji && initialPrice) {
+    if (publicKey && signTransaction && selectedEmoji && initialPrice) {
       const tokenMetadata = {
-        // updateAuthority: publicKey.toString(),
         name: name,
         symbol: selectedEmoji,
         uri: `https://emoji.beeimg.com/${selectedEmoji}`,
@@ -82,16 +82,19 @@ const CreateEmoji: React.FC<CreateEmojiProps> = ({
         }
       };
   
-      console.log('Created tokenMetadata:', tokenMetadata);
-  
       try {
-        const [initSig, mintSig] = await createTokenAndMint(tokenMetadata, { publicKey,signTransaction });
-        console.log('Token created successfully:', initSig, mintSig);
+        const result = await createTokenAndMint(tokenMetadata, { 
+          publicKey, 
+          signTransaction 
+        });
+        console.log('Token created successfully:', result);
         setShowCreateModal(false);
       } catch (error) {
         console.error('Failed to create token:', error);
+        alert('Failed to create token. Please check console for details.');
       }
-      setShowCreateModal(false);
+    } else {
+      alert("Please fill all the fields and connect wallet");
     }
   };
 

@@ -9,7 +9,7 @@ dotenv.config()
 
 
 export const owner: Keypair = Keypair.fromSecretKey(new Uint8Array(secret));
-const endpoint = process.env.SOLANA_DEVNET_URL as string;
+const endpoint = "https://twilight-delicate-violet.solana-devnet.quiknode.pro/65d907cbead451af0859c2f52234083774da6f4b/" as string;
 export const connection = new Connection(endpoint) //<YOUR_RPC_URL>
 // export const connection = new Connection(clusterApiUrl('devnet')) //<YOUR_RPC_URL>
 export const txVersion = TxVersion.V0 // or TxVersion.LEGACY
