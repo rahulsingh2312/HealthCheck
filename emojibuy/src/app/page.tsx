@@ -22,7 +22,7 @@ import CreateEmoji from './CreateEmoji';
 import { WalletProvider } from '@solana/wallet-adapter-react';
 import SingleTokenSwapButton from './SingleTokenSwapButton';
 import { TipLinkWalletAdapter } from "@tiplink/wallet-adapter";
-
+import TokenLinksGrid from './TokenLinksGrid';
 import { WalletModalProvider, TipLinkWalletAutoConnectV2 } from '@tiplink/wallet-adapter-react-ui';
 import TokenDetailsTable from './TokenDetailsTable';
 const wallets = [
@@ -33,6 +33,20 @@ const wallets = [
     hideDraggableWidget: false
   }),
 ];
+// Updated interface to include Firebase metadata
+interface TokenFirebaseData {
+  tokenAddress: string;
+  emoji: string;
+  name: string;
+  symbol: string;
+  creator: string;
+  createdAt: string;
+  socials: {
+    twitter?: string;
+    website?: string;
+  };
+  metadata?: any;
+}
 let bulkTokens:any ;
 // import data from './demo.json';
 import MarketInfo from './MarketInfo';  // Import MarketInfo component
@@ -212,45 +226,55 @@ const fetchHeliusData = async (tokenId: any) => {
       const tokensCollection = collection(db, 'tokens');
       const tokensSnapshot = await getDocs(tokensCollection);
       
-      // Get token configurations from Firebase
-      const tokenConfigs = tokensSnapshot.docs.map((doc: any) => ({
-        id: doc.data().tokenAddress,
-        // Add any other fields you need from Firestore
-      }));
+     // Get token configurations from Firebase with all metadata
+     const tokenConfigs = tokensSnapshot.docs.map(doc => ({
+       id: doc.id,
+       ...doc.data()
+     })) as unknown as TokenFirebaseData[];
 
       console.log('Token configs:', tokenConfigs);
       // Fetch data for each token individually and store promises
-      const tokenDataPromises = tokenConfigs.map(async (token: { id: any; }) => {
+      const tokenDataPromises = tokenConfigs.map(async (tokenConfig) => {
         try {
           // First try DexScreener
-          const response = await fetch(`https://api.dexscreener.com/latest/dex/pairs/solana/${token.id}`);
+          const response = await fetch(`https://api.dexscreener.com/latest/dex/pairs/solana/${tokenConfig.tokenAddress}`);
           const data = await response.json();
 
           // Check if DexScreener returned null or invalid data
           if (!response.ok || 
               data.schemaVersion === "1.0.0" && (data.pairs === null || data.pair === null)) {
-            console.log(`DexScreener returned null for ${token.id}, falling back to Helius`);
+            console.log(`DexScreener returned null for ${tokenConfig.tokenAddress}, falling back to Helius`);
             // Fallback to Helius
-            const heliusData = await fetchHeliusData(token.id);
-            return heliusData || {
-              baseToken: {
-                address: token.id,
-                name: (token as any).name || 'Unknown Token',
-                symbol: '???',
-                logoUrl: '/placeholder-token.png'
-              },
-              isDataAvailable: false
-            };
+            const heliusData = await fetchHeliusData(tokenConfig.tokenAddress);
+        // Merge Helius data with Firebase metadata
+        return {
+          pairs: [{
+            ...heliusData.pairs[0],
+            firebaseData: tokenConfig,
+            info: {
+              ...heliusData.pairs[0].info,
+              socials: [{
+                name: 'twitter',
+                url: tokenConfig.socials?.twitter || null
+              }],
+              websites: [{
+                name: 'website',
+                url: tokenConfig.socials?.website || null
+              }]
+            }
+          }]
+        };
+      
           }
 
           return data;
         } catch (error) {
-          console.error(`Error fetching token ${token.id}:`, error);
+          console.error(`Error fetching token ${tokenConfig.tokenAddress}:`, error);
           // Try Helius as fallback
-          const heliusData = await fetchHeliusData(token.id);
+          const heliusData = await fetchHeliusData(tokenConfig.tokenAddress);
           return heliusData || {
             baseToken: {
-              address: token.id,
+              address: tokenConfig.tokenAddress,
               name:  'Unknown Token',
               symbol:  '???',
               logoUrl:  '/placeholder-token.png'
@@ -755,40 +779,10 @@ const MobileNav = () => (
                 Buy Now
               </button> */}
 
-              <div className="grid grid-cols-3 justify-center items-center gap-4 mt-5">
-                <button 
-                  className={`flex text-xs items-center py-2 px-1 border-solid border justify-center rounded-lg ${
-                    isDarkMode ? 'border-white' : 'border-black'
-                  }`}
-                >
-                  <a href={selectedToken.url} className="flex items-center">
-                    <ExternalLink className='mr-2' size={13} />
-                    DEX
-                  </a>
-                </button>
-
-                <button 
-                  className={`flex text-xs items-center py-2 px-1 border-solid border justify-center rounded-lg ${
-                    isDarkMode ? 'border-white' : 'border-black'
-                  }`}
-                >
-                  <a href={selectedToken?.info?.socials[0]?.url} className="flex items-center">
-                    <Share2 className='mr-2' size={13} />
-                    Social
-                  </a>
-                </button>
-
-                <button 
-                  className={`flex text-xs items-center py-2 px-1 border-solid border justify-center rounded-lg ${
-                    isDarkMode ? 'border-white' : 'border-black'
-                  }`}
-                >
-                  <a href={selectedToken?.info?.websites[0]?.url} className="flex items-center">
-                    <Squirrel className='mr-2' size={13} />
-                    Website
-                  </a>
-                </button>
-              </div>
+            <TokenLinksGrid 
+  selectedToken={selectedToken} 
+  isDarkMode={isDarkMode} 
+/>
             </div>
           )}
         </div>
