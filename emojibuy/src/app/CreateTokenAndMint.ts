@@ -183,56 +183,96 @@ async function createTokenAndMint(
   await connection.confirmTransaction(mintSig);
   console.log(`Mint Transaction: ${generateExplorerUrl(mintSig)}`);
 
-  // Create Pool & Add LP
-  try {
-    const raydium = await initSdk({ loadToken: true });
-    
-    const mintA = await raydium.token.getTokenInfo(mint.toBase58());
-    const mintB = await raydium.token.getTokenInfo('So11111111111111111111111111111111111111112');
+ // Create WSOL token account and fund it
+ const wrappedSolMint = new PublicKey('So11111111111111111111111111111111111111112');
+ const wrappedSolAccount = await getAssociatedTokenAddress(
+   wrappedSolMint,
+   wallet.publicKey,
+   false
+ );
 
-    const feeConfigs = await raydium.api.getCpmmConfigs();
+ // Check if WSOL account exists, if not create it
+ try {
+   const wsolAccountInfo = await connection.getAccountInfo(wrappedSolAccount);
+   if (!wsolAccountInfo) {
+     const createWSOLAtaTx = new Transaction().add(
+       createAssociatedTokenAccountInstruction(
+         wallet.publicKey,
+         wrappedSolAccount,
+         wallet.publicKey,
+         wrappedSolMint
+       )
+     );
+     createWSOLAtaTx.recentBlockhash = (await connection.getLatestBlockhash()).blockhash;
+     createWSOLAtaTx.feePayer = wallet.publicKey;
+     
+     const signedWSOLAtaTx = await wallet.signTransaction(createWSOLAtaTx);
+     const wsolAtaSig = await connection.sendRawTransaction(signedWSOLAtaTx.serialize());
+     await connection.confirmTransaction(wsolAtaSig);
+   }
+ } catch (error) {
+   console.log("WSOL account might already exist, continuing...");
+ }
 
-    if (raydium.cluster === 'devnet') {
-      feeConfigs.forEach((config) => {
-        config.id = getCpmmPdaAmmConfigId(DEVNET_PROGRAM_ID.CREATE_CPMM_POOL_PROGRAM, config.index).publicKey.toBase58();
-      });
-    }
+ // Create Pool
+ try {
+   const raydium = await initSdk({ loadToken: true });
+   
+   const mintA = await raydium.token.getTokenInfo(mint.toBase58());
+   const mintB = await raydium.token.getTokenInfo('So11111111111111111111111111111111111111112');
 
-    const { execute, extInfo } = await raydium.cpmm.createPool({
-      programId: DEVNET_PROGRAM_ID.CREATE_CPMM_POOL_PROGRAM,
-      poolFeeAccount: DEVNET_PROGRAM_ID.CREATE_CPMM_POOL_FEE_ACC,
-      mintA,
-      mintB,
-      mintAAmount: new BN(21000000_000_000),
-      mintBAmount: new BN(1000_000),
-      startTime: new BN(0),
-      feeConfig: feeConfigs[0],
-      associatedOnly: false,
-      ownerInfo: {
-        feePayer: wallet.publicKey,
-        useSOLBalance: true,
-      },
-      txVersion,
-    });
+   const feeConfigs = await raydium.api.getCpmmConfigs();
 
-    const { txId } = await execute({ sendAndConfirm: true });
-    console.log('Pool created', {
-      txId,
-      poolKeys: Object.keys(extInfo.address).reduce(
-        (acc, cur) => ({
-          ...acc,
-          [cur]: extInfo.address[cur as keyof typeof extInfo.address].toString(),
-        }),
-        {}
-      ),
-    });
+   if (raydium.cluster === 'devnet') {
+     feeConfigs.forEach((config) => {
+       config.id = getCpmmPdaAmmConfigId(DEVNET_PROGRAM_ID.CREATE_CPMM_POOL_PROGRAM, config.index).publicKey.toBase58();
+     });
+   }
 
-    return { mint: mint.toBase58(), initSig, mintSig, poolTxId: txId };
-  } catch (error) {
-    console.error('Error creating pool:', error);
-    throw error;
-  }
+   const { execute, extInfo } = await raydium.cpmm.createPool({
+     programId: DEVNET_PROGRAM_ID.CREATE_CPMM_POOL_PROGRAM,
+     poolFeeAccount: DEVNET_PROGRAM_ID.CREATE_CPMM_POOL_FEE_ACC,
+     mintA,
+     mintB,
+     mintAAmount: new BN(mintAmount),    // Full amount minted
+     mintBAmount: new BN(1_000_000),     // 1 SOL
+     startTime: new BN(0),
+     feeConfig: feeConfigs[0],
+     associatedOnly: true,               // Changed to true
+     ownerInfo: {
+       feePayer: wallet.publicKey,
+       useSOLBalance: true,
+     },
+     txVersion,
+   });
+
+   const { txId } = await execute({ sendAndConfirm: true });
+   console.log('Pool created', {
+     txId,
+     poolKeys: Object.keys(extInfo.address).reduce(
+       (acc, cur) => ({
+         ...acc,
+         [cur]: extInfo.address[cur as keyof typeof extInfo.address].toString(),
+       }),
+       {}
+     ),
+   });
+
+   return { 
+     mint: mint.toBase58(), 
+     initSig, 
+     ataSig, 
+     mintSig,
+     poolTxId: txId,
+     associatedToken: associatedToken.toBase58()
+   };
+
+ } catch (error) {
+   console.error('Error creating pool:', error);
+   throw error;
+ }
 }
+
 
 function generateExplorerUrl(identifier: string, isAddress: boolean = false): string {
   if (!identifier) return '';

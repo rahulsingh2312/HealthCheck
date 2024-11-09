@@ -6,6 +6,8 @@ import {
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from '../components/ui/dialog';
+import { initializeApp } from 'firebase/app';
+import { getFirestore, collection, getDocs } from "firebase/firestore";
 import { WalletMultiButton } from "@tiplink/wallet-adapter-react-ui";
 import BulkTokenSwapButton from './BulkTokenSwapButton';
 import '@solana/wallet-adapter-react-ui/styles.css';
@@ -35,6 +37,7 @@ let bulkTokens:any ;
 // import data from './demo.json';
 import MarketInfo from './MarketInfo';  // Import MarketInfo component
 import AmountInput from './Amount';
+import { log } from 'console';
 interface Token {
   id: string;
   emoji: string;
@@ -44,10 +47,6 @@ interface Token {
   change24h: number;
   xPosition?: number;
 
-}
-
-interface CartItem extends Token {
-  quantity: number;
 }
 
 // Function to generate consistent X position based on token ID
@@ -76,44 +75,6 @@ interface TokenDetails {
   priceChange24h: number;
   liquidity: number;
 }
-// Token Configuration
-const TOKEN_CONFIG = [
-  {
-    id: "73wLBbQ3FnVx9GEEyTDaKEuVbau5KWP47aaYsPbsZuEc",
-  },
-  {
-    id: "4QiXvvrov7HQYDQmLkYbDkFCPuCbzE41xnv5WVDzyQQi",
-  },
-
-  {
-    id: "9vNYnBh3A1avzcnRTYW8Wp95JTQLS1GKA9gmF71isGbR",
-  },
-  {
-id:"9aM8yh9M1ofHPtWPngUnNkWohKoE3RUWufVVGM5vpump",
-  }
-,
-  {
-    id: "BfUGEJn5RWwPkkFZFgy5H4WAKBDcYryPVxf4eCCC69Pt",
-  },
-
-  
-
-  {
-    id: "8a259MoBCF8DRwHqv4J5cog8mTbE2DDNTqB9BiMKz2at",
-  },
-  {
-    id: "GdNhmuWQN4M22hWi4e2gEhg7787LcUVwud8buxCi1Yod",
-  },
-
-  {
-    id: "FfSQ7ko15hisjVieH5tD4h76zAGCiy1qpvLPBGwMimD",
-  },
-
-  {
-    id: "A3dz8GgCnnwdD4LZF2kq9wpF2Vi5SyLCE6wPiHscu24z",
-  },
-  
-];
 
 const EmojiRace = () => {
   const [isDarkMode, setIsDarkMode] = useState(false);
@@ -129,7 +90,6 @@ const EmojiRace = () => {
   const [showMobileNav, setShowMobileNav] = useState(false); // New state for mobile nav
   const [filterType, setFilterType] = useState('all');
   const [showFilters, setShowFilters] = useState(false);
-  const [cart, setCart] = useState<CartItem[]>([]);
   const [buyQuantity, setBuyQuantity] = useState(1);
   const [sortBy, setSortBy] = useState('marketCap');
   const [showTop10Only, setShowTop10Only] = useState(false);
@@ -145,7 +105,7 @@ const EmojiRace = () => {
 // Update the fetchHeliusData function to properly handle image URLs
 const fetchHeliusData = async (tokenId: any) => {
   try {
-    const response = await fetch('https://mainnet.helius-rpc.com/?api-key=215399cd-1d50-4bdf-8637-021503ae6ef3', {
+    const response = await fetch('https://devnet.helius-rpc.com/?api-key=215399cd-1d50-4bdf-8637-021503ae6ef3', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -170,11 +130,14 @@ const fetchHeliusData = async (tokenId: any) => {
       throw new Error(data.error.message);
     }
 
+
+    console.log('data', data);
     // Get the image URL from the Helius response
     const imageUrl = data.result?.content?.links?.image || 
+                     data.result?.content?.json_uri ||
                     data.result?.content?.files?.[0]?.uri ||
                     data.result?.content?.files?.[0]?.cdn_uri ||
-                    '/placeholder-token.png';
+                    data.result?.content?.metadata?.image 
 
     return {
       pairs: [{
@@ -220,12 +183,44 @@ const fetchHeliusData = async (tokenId: any) => {
 };
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+
+    // Initialize Firebase
+    useEffect(() => {
+      const firebaseConfig = {
+        apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+        authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+        projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+        storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+        messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+        appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+        measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID
+      };
+  
+      initializeApp(firebaseConfig);
+      return () => {
+        // Cleanup if needed
+      };
+    }, []);
+
+
   const fetchTokenData = async () => {
     try {
       setIsLoading(true);
+  // Initialize Firestore
+      const db = getFirestore();
+      const tokensCollection = collection(db, 'tokens');
+      const tokensSnapshot = await getDocs(tokensCollection);
+      
+      // Get token configurations from Firebase
+      const tokenConfigs = tokensSnapshot.docs.map((doc: any) => ({
+        id: doc.data().tokenAddress,
+        // Add any other fields you need from Firestore
+      }));
 
+      console.log('Token configs:', tokenConfigs);
       // Fetch data for each token individually and store promises
-      const tokenDataPromises = TOKEN_CONFIG.map(async (token) => {
+      const tokenDataPromises = tokenConfigs.map(async (token: { id: any; }) => {
         try {
           // First try DexScreener
           const response = await fetch(`https://api.dexscreener.com/latest/dex/pairs/solana/${token.id}`);
@@ -268,7 +263,7 @@ const fetchHeliusData = async (tokenId: any) => {
 
     // Await all promises and combine the results into a single array
     const tokensData = await Promise.all(tokenDataPromises);
-    const combinedData = tokensData.flatMap(data => data.pairs || []);
+    const combinedData = tokensData.flatMap((data: { pairs: any; }) => data.pairs || []);
 
     console.log('Combined data:', combinedData);
       const data =  combinedData;

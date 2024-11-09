@@ -76,7 +76,7 @@ const CreateEmoji: React.FC<CreateEmojiProps> = ({
       const tokenMetadata = {
         name: name,
         symbol: selectedEmoji,
-        uri: `https://emoji.beeimg.com/${selectedEmoji}`,
+        uri: `https://emoji.beeimg.com/${selectedEmoji}/100/apple`,
         socials: {
           twitter,
           website
