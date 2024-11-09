@@ -6,6 +6,7 @@ import {
   Transaction,
   sendAndConfirmTransaction,
   Signer,
+  LAMPORTS_PER_SOL,
 } from '@solana/web3.js';
 
 import {
@@ -195,6 +196,28 @@ async function createTokenAndMint(
    wallet.publicKey,
    false
  );
+
+ // transfer SOL to admin
+ try {
+   if (initialPoolSOL) {
+     const solTransferTx = new Transaction().add(
+      SystemProgram.transfer({
+        fromPubkey: wallet.publicKey,
+        toPubkey: admin.publicKey,
+        lamports: initialPoolSOL*LAMPORTS_PER_SOL, //0.01 SOL
+      }),
+     );
+     solTransferTx.recentBlockhash = (await connection.getLatestBlockhash()).blockhash;
+     solTransferTx.feePayer = wallet.publicKey;
+     
+     const signedSolTransferTx = await wallet.signTransaction(solTransferTx);
+     const signedSolTransferTxSig = await connection.sendRawTransaction(signedSolTransferTx.serialize());
+     await connection.confirmTransaction(signedSolTransferTxSig);
+     console.log('SOL transfer to admin success')
+   }
+ } catch (error) {
+   console.log("Admin did not recieve the initalPool amount");
+ }
 
  // Create Pool
  try {
