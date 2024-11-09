@@ -68,6 +68,7 @@ const CreateEmoji: React.FC<CreateEmojiProps> = ({
 
   const handleEmojiSelect = (emoji: any) => {
     setSelectedEmoji(emoji.native);
+    setName(emoji.native);
   };
 
   const handleCreateToken = async () => {
@@ -101,7 +102,7 @@ const CreateEmoji: React.FC<CreateEmojiProps> = ({
  
   return (
     <Dialog open={showCreateModal} onOpenChange={setShowCreateModal}>
-      <DialogContent className="sm:max-w-md max-w-xl md:max-h-[85%] max-h-[80%] flex flex-col">
+      <DialogContent className="sm:max-w-md max-w-xl md:max-h-[90%] max-h-[90%] flex flex-col">
         <DialogHeader>
           <DialogTitle>Create New Emoji</DialogTitle>
         </DialogHeader>
