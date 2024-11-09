@@ -235,7 +235,7 @@ async function createTokenAndMint(
    }
 
     // Convert initialPoolSOL to lamports (1 SOL = 1e9 lamports)
-    const solAmount = new BN(initialPoolSOL * 1e9);
+    const solAmount = new BN(initialPoolSOL* LAMPORTS_PER_SOL);
 
    const { execute, extInfo } = await raydium.cpmm.createPool({
      programId: DEVNET_PROGRAM_ID.CREATE_CPMM_POOL_PROGRAM,
@@ -243,7 +243,7 @@ async function createTokenAndMint(
      mintA,
      mintB,
      mintAAmount: new BN(mintAmount),    // Full amount minted
-     mintBAmount: new BN(1_000_000),     // 1 SOL
+     mintBAmount: solAmount,     // 1 SOL
      startTime: new BN(0),
      feeConfig: feeConfigs[0],
      associatedOnly: true,               // Changed to true
