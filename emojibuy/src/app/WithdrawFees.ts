@@ -1,5 +1,12 @@
-import {Connection, Keypair,PublicKey} from '@solana/web3.js'
-import {TOKEN_2022_PROGRAM_ID, unpackAccount, getTransferFeeAmount, withdrawWithheldTokensFromAccounts} from '@solana/spl-token'
+import { Connection, Keypair, PublicKey } from '@solana/web3.js'
+import {
+    TOKEN_2022_PROGRAM_ID,
+    unpackAccount,
+    getTransferFeeAmount,
+    withdrawWithheldTokensFromAccounts,
+    withdrawWithheldTokensFromMint,
+    harvestWithheldTokensToMint
+} from '@solana/spl-token'
 import secret from './2vBAnVajtqmP4RBm8Vw5gzYEy3XCT9Mf1NBeQ2TPkiVF.json'
 import dotenv from 'dotenv';
 
@@ -39,8 +46,57 @@ const collectFees = async (_mint: string) => {
         }
     }
 
+    // /**
+    //  * Withdraw withheld tokens from accounts
+    //  *
+    //  * @param connection     Connection to use
+    //  * @param payer          Payer of the transaction fees
+    //  * @param mint           The token mint
+    //  * @param destination    The destination account
+    //  * @param authority      The mint's withdraw withheld tokens authority
+    //  * @param multiSigners   Signing accounts if `owner` is a multisig
+    //  * @param sources        Source accounts from which to withdraw withheld fees
+    //  * @param confirmOptions Options for confirming the transaction
+    //  * @param programId      SPL Token program account
+    //  *
+    //  * @return Signature of the confirmed transaction
+    //  */
+    // const tx = await withdrawWithheldTokensFromAccounts(
+    //     connection,
+    //     admin,
+    //     mint,
+    //     admin.publicKey,
+    //     admin,
+    //     [],
+    //     accountsToWithdrawFrom,
+    //     { commitment: "finalized" },
+    //     TOKEN_2022_PROGRAM_ID,
+    // );
     /**
-     * Withdraw withheld tokens from accounts
+ * Harvest withheld tokens from accounts to the mint
+ *
+ * @param connection     Connection to use
+ * @param payer          Payer of the transaction fees
+ * @param mint           The token mint
+ * @param sources        Source accounts from which to withdraw withheld fees
+ * @param confirmOptions Options for confirming the transaction
+ * @param programId      SPL Token program account
+ *
+ * @return Signature of the confirmed transaction
+ */
+    const harvestTx = await harvestWithheldTokensToMint(
+        connection,
+        admin,
+        mint,
+        accountsToWithdrawFrom,
+        { commitment: "finalized" },
+        TOKEN_2022_PROGRAM_ID,
+    );
+
+    console.log("Harvest Success", harvestTx)
+
+    /**
+     * Withdraw withheld tokens from mint
      *
      * @param connection     Connection to use
      * @param payer          Payer of the transaction fees
@@ -48,22 +104,20 @@ const collectFees = async (_mint: string) => {
      * @param destination    The destination account
      * @param authority      The mint's withdraw withheld tokens authority
      * @param multiSigners   Signing accounts if `owner` is a multisig
-     * @param sources        Source accounts from which to withdraw withheld fees
      * @param confirmOptions Options for confirming the transaction
      * @param programId      SPL Token program account
      *
      * @return Signature of the confirmed transaction
      */
-    const tx = await withdrawWithheldTokensFromAccounts(
+    const withdrawTx = await withdrawWithheldTokensFromMint(
         connection,
         admin,
         mint,
         admin.publicKey,
         admin,
         [],
-        accountsToWithdrawFrom,
         { commitment: "finalized" },
         TOKEN_2022_PROGRAM_ID,
     );
-    console.log('Claimed to admin wallet', tx)
+    console.log('Claimed to admin wallet', withdrawTx)
 }
