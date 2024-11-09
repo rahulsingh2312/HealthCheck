@@ -48,7 +48,8 @@ async function createTokenAndMint(
   wallet: {
     publicKey: PublicKey;
     signTransaction?: (tx: Transaction) => Promise<Transaction>;
-  }
+  },
+  initialPoolSOL: number // New parameter for dynamic pool amount
 ) {
   if (!wallet.publicKey || !wallet.signTransaction) {
     throw new Error("Wallet not connected or doesn't support signing");
@@ -62,8 +63,11 @@ async function createTokenAndMint(
     mint: mint,
     name: metadata.name,
     symbol: metadata.symbol,
-    uri: metadata.uri,
-    additionalMetadata: [['', '']],
+    uri: `https://emoji.beeimg.com/${metadata.symbol}/100`,
+    additionalMetadata: [
+      ['twitter', metadata.socials.twitter || ''],
+      ['website', metadata.socials.website || '']
+    ],
   };
 
   const decimals = 6;
@@ -230,6 +234,9 @@ async function createTokenAndMint(
        config.id = getCpmmPdaAmmConfigId(DEVNET_PROGRAM_ID.CREATE_CPMM_POOL_PROGRAM, config.index).publicKey.toBase58();
      });
    }
+
+    // Convert initialPoolSOL to lamports (1 SOL = 1e9 lamports)
+    const solAmount = new BN(initialPoolSOL * 1e9);
 
    const { execute, extInfo } = await raydium.cpmm.createPool({
      programId: DEVNET_PROGRAM_ID.CREATE_CPMM_POOL_PROGRAM,
