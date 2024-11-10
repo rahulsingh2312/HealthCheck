@@ -16,10 +16,10 @@ const MarketInfo: React.FC<MarketInfoProps> = ({ marketCap, gainerPercentage,top
       style={{ textAlign: 'center' }}
     >
       <div className="text-sm hidden md:flex font-medium">
-        Total Market Cap: ${marketCap}M
+        Total Market Cap: ${marketCap}
       </div>
       <div className="text-sm hidden md:flex justify-center items-center font-medium">
-        Top Gainer 24H: <span className="mr-1"><img className='w-[30px] mx-4' src={topgain} /></span>
+        Top Gainer 24H: <span className="mr-1 "> &nbsp; {topgain} </span>
         <span className="text-green-500">+{gainerPercentage}%</span>
       </div>
 
@@ -33,7 +33,7 @@ const MarketInfo: React.FC<MarketInfoProps> = ({ marketCap, gainerPercentage,top
       <div className="text-green-500"> &nbsp;+{gainerPercentage}%</div>
       </div>
       <div className="text-sm flex md:hidden font-medium">
-      <img className='w-[45px] mr-4' src={topgain} />
+     {topgain} 
       </div>
     </div>
   );

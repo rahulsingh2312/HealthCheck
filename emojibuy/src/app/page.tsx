@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import {
   Search, Filter, Plus, Sun, Moon, ShoppingCart, Share2, ExternalLink, Squirrel, Send, PawPrint, Menu, X, MousePointer2
 } from 'lucide-react';
+import WelcomePopup from './WelcomePopup';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
@@ -15,12 +16,14 @@ const formatNumber = (num: number) => {
   if (num >= 1e3) return (num / 1e3).toFixed(1) + ' K';
   return num?.toLocaleString();
 };
+import { motion } from 'framer-motion';
+
 
 import CreateEmoji from './CreateEmoji';
 import { WalletProvider } from '@solana/wallet-adapter-react';
 import SingleTokenSwapButton from './SingleTokenSwapButton';
 import { TipLinkWalletAdapter } from "@tiplink/wallet-adapter";
-
+import TOKEN_CONFIG from './demo.js'
 import { WalletModalProvider, TipLinkWalletAutoConnectV2 } from '@tiplink/wallet-adapter-react-ui';
 import TokenDetailsTable from './TokenDetailsTable';
 const wallets = [
@@ -31,6 +34,7 @@ const wallets = [
     hideDraggableWidget: false
   }),
 ];
+import FilterPanel from './FilterPanel';
 let bulkTokens:any ;
 // import data from './demo.json';
 import MarketInfo from './MarketInfo';  // Import MarketInfo component
@@ -42,6 +46,7 @@ interface Token {
   price: string;
   type: string;
   change24h: number;
+  icon: string;
   xPosition?: number;
 
 }
@@ -76,50 +81,12 @@ interface TokenDetails {
   priceChange24h: number;
   liquidity: number;
 }
-// Token Configuration
-const TOKEN_CONFIG = [
-  {
-    id: "73wLBbQ3FnVx9GEEyTDaKEuVbau5KWP47aaYsPbsZuEc",
-  },
-  {
-    id: "4QiXvvrov7HQYDQmLkYbDkFCPuCbzE41xnv5WVDzyQQi",
-  },
-
-  {
-    id: "9vNYnBh3A1avzcnRTYW8Wp95JTQLS1GKA9gmF71isGbR",
-  },
-  {
-id:"9aM8yh9M1ofHPtWPngUnNkWohKoE3RUWufVVGM5vpump",
-  }
-,
-  {
-    id: "BfUGEJn5RWwPkkFZFgy5H4WAKBDcYryPVxf4eCCC69Pt",
-  },
-
-  
-
-  {
-    id: "8a259MoBCF8DRwHqv4J5cog8mTbE2DDNTqB9BiMKz2at",
-  },
-  {
-    id: "GdNhmuWQN4M22hWi4e2gEhg7787LcUVwud8buxCi1Yod",
-  },
-
-  {
-    id: "FfSQ7ko15hisjVieH5tD4h76zAGCiy1qpvLPBGwMimD",
-  },
-
-  {
-    id: "A3dz8GgCnnwdD4LZF2kq9wpF2Vi5SyLCE6wPiHscu24z",
-  },
-  
-];
 
 const EmojiRace = () => {
-  const [isDarkMode, setIsDarkMode] = useState(false);
+  const [isDarkMode, setIsDarkMode] = useState(true);
   const [selectedEmoji, setSelectedEmoji] = useState<Token | null>(null);
   const [selectedEmojis, setSelectedEmojis] = useState<Token[]>([]);
-  const [isSelectionMode, setIsSelectionMode] = useState(false);
+  const [isSelectionMode, setIsSelectionMode] = useState(true);
   const [showBulkBuyModal, setShowBulkBuyModal] = useState(false);
   const [totalSolAmount, setTotalSolAmount] = useState(1);
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -131,9 +98,11 @@ const EmojiRace = () => {
   const [showFilters, setShowFilters] = useState(false);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [buyQuantity, setBuyQuantity] = useState(1);
-  const [sortBy, setSortBy] = useState('marketCap');
+  const [sortBy, setSortBy] = useState('change24h');
   const [showTop10Only, setShowTop10Only] = useState(false);
   const [tokens, setTokens] = useState<TokenDetails[]>([]);
+  const [showWelcomePopup, setShowWelcomePopup] = useState(true);
+const [lastTapTime, setLastTapTime] = useState<{ [key: string]: number }>({});
   const [marketStats, setMarketStats] = useState({
     totalMarketCap: 0,
     topGainer: null,
@@ -236,32 +205,15 @@ const fetchHeliusData = async (tokenId: any) => {
               data.schemaVersion === "1.0.0" && (data.pairs === null || data.pair === null)) {
             console.log(`DexScreener returned null for ${token.id}, falling back to Helius`);
             // Fallback to Helius
-            const heliusData = await fetchHeliusData(token.id);
-            return heliusData || {
-              baseToken: {
-                address: token.id,
-                name: (token as any).name || 'Unknown Token',
-                symbol: '???',
-                logoUrl: '/placeholder-token.png'
-              },
-              isDataAvailable: false
-            };
+            // const heliusData = await fetchHeliusData(token.id);
+            
           }
 
           return data;
         } catch (error) {
           console.error(`Error fetching token ${token.id}:`, error);
           // Try Helius as fallback
-          const heliusData = await fetchHeliusData(token.id);
-          return heliusData || {
-            baseToken: {
-              address: token.id,
-              name:  'Unknown Token',
-              symbol:  '???',
-              logoUrl:  '/placeholder-token.png'
-            },
-            isDataAvailable: false
-          };
+        
         }
       });
 
@@ -297,7 +249,7 @@ const fetchHeliusData = async (tokenId: any) => {
           
           if (priceChange.h24 > maxChange) {
             maxChange = priceChange.h24;
-            topGainer = info?.imageUrl || baseToken.symbol;
+            topGainer =  baseToken.symbol|| info?.imageUrl;
           }
         }
       });
@@ -355,7 +307,7 @@ const sortTokens = (tokensToSort: TokenDetails[]) => {
       case 'change24h':
         return (b.priceChange?.h24 || 0) - (a.priceChange?.h24 || 0);
       default:
-        return 0;
+        return (b.priceChange?.h24 || 0) - (a.priceChange?.h24 || 0);
     }
   });
 };
@@ -400,7 +352,7 @@ const toggleEmojiSelection = (token: Token) => {
 const MobileNav = () => (
   <div
     className={`fixed inset-0 z-50 ${
-      isDarkMode ? 'bg-gray-900/70' : 'bg-white/70'
+      isDarkMode ? 'bg-[#1B2327]' : 'bg-white/70'
     } backdrop-filter backdrop-blur-md text-gray-100`}
   >
     <div className="flex justify-between items-center p-4 border-b">
@@ -413,7 +365,7 @@ const MobileNav = () => (
     </div>
     <div className="p-4 mt-4 space-y-6">
       {/* Search Bar */}
-      <div className="relative">
+      <div className="relative flex gap-4">
         <input
           type="text"
           value={searchTerm}
@@ -421,18 +373,7 @@ const MobileNav = () => (
           placeholder="Search emojis..."
           className="w-full rounded-lg px-4 py-2 pl-9 bg-gray-800 text-white"
         />
-        <Search className="absolute left-3 top-3 text-gray-400" size={16} />
-      </div>
-
-      <div className="flex gap-x-4">
-        {/* Dark Mode Toggle */}
-        <button
-          onClick={() => setIsDarkMode(!isDarkMode)}
-          className="flex py-3  items-center gap-3 justify-center p-2 rounded-lg w-full bg-gray-800 text-white"
-        >
-            {isDarkMode ? <Sun size={18} /> : <Moon size={18} />}
-            </button>
-
+        <Search className="absolute  left-3 top-3 text-gray-400" size={16} />
         <button
           onClick={() => setShowFilters(!showFilters)}
           className="flex items-center justify-center gap-3 p-2 rounded-lg w-full bg-gray-800 text-white"
@@ -440,13 +381,41 @@ const MobileNav = () => (
           <Filter size={18} />
         </button>
 
+      </div>
 
-        <button
+      <div className="flex gap-x-4">
+        {/* Dark Mode Toggle */}
+        <WalletMultiButton
+              style={{
+                width: "100%",
+                fontSize: "9px",
+                height: "40px",
+                background: "#A9F605",
+                color: "black",
+                borderRadius: "180px",
+              }}
+            /> 
+        {/* <button
+          onClick={() => setIsDarkMode(!isDarkMode)}
+          className="flex py-3  items-center gap-3 justify-center p-2 rounded-lg w-full bg-gray-800 text-white"
+        >
+            {isDarkMode ? <Sun size={18} /> : <Moon size={18} />}
+            </button> */}
+
+{/* <button
+          onClick={() => setShowFilters(!showFilters)}
+          className="flex items-center justify-center gap-3 p-2 rounded-lg w-full bg-gray-800 text-white"
+        >
+          <Filter size={18} />
+        </button> */}
+
+
+        {/* <button
           onClick={() => setShowCreateModal(true)}
           className="flex items-center justify-center gap-3 p-2 rounded-lg w-full bg-custom-green text-white"
         >
           <Plus size={18} />
-        </button>
+        </button> */}
       </div>
     </div>
   </div>
@@ -459,90 +428,28 @@ const MobileNav = () => (
 
 
 
- // Enhanced FilterPanel component
- const FilterPanel = () => (
-  <div className={`fixed top-20 right-4 z-[100] px-4 py-4 rounded-lg shadow-lg ${
-    isDarkMode ? 'bg-gray-800' : 'bg-white'
-  }`}>
-    <div className='justify-between flex items-center mb-4'>
-      <h3 className="font-medium">Filters</h3>
-      <button 
-        onClick={() => setShowFilters(false)}
-        className="p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-full"
-      >
-        <X size={20} className="text-gray-400" />
-      </button>
-    </div>
-    
-    <div className="space-y-4">
-      {/* <div>
-        <label className="block text-sm mb-2">Type</label>
-        <select
-          value={filterType}
-          onChange={(e) => setFilterType(e.target.value)}
-          className={`w-full rounded-lg px-3 py-2 ${
-            isDarkMode ? 'bg-gray-700 text-white' : 'bg-gray-100'
-          }`}
-        >
-          {filterOptions.types.map(type => (
-            <option key={type} value={type}>
-              {type.charAt(0).toUpperCase() + type.slice(1)}
-            </option>
-          ))}
-        </select>
-      </div> */}
-
-      <div>
-        {/* <label className="block text-sm mb-2">Sort By</label> */}
-        <select
-          value={sortBy}
-          onChange={(e) => setSortBy(e.target.value)}
-          className={`w-full rounded-lg px-3 py-2 ${
-            isDarkMode ? 'bg-gray-700 text-white' : 'bg-gray-100'
-          }`}
-        >
-          {filterOptions.sortOptions.map(option => (
-            <option key={option.value} value={option.value}>
-              {option.label}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      <div className="flex items-center gap-2">
-        <input
-          type="checkbox"
-          id="top10"
-          checked={showTop10Only}
-          onChange={(e) => setShowTop10Only(e.target.checked)}
-          className="rounded"
-        />
-        <label htmlFor="top10" className="text-sm">Show Top 10 Only</label>
-      </div>
-
-     
-    </div>
-  </div>
-);
-
   return (
     <WalletProvider wallets={wallets} autoConnect>
     {typeof window !== 'undefined' && (
       <TipLinkWalletAutoConnectV2 isReady query={new URLSearchParams(window.location.search)}>
         <WalletModalProvider>
-
-    <div className={`min-h-screen transition-colors duration-200 ${
-      isDarkMode ? 'bg-gray-900 text-white' : 'bg-gray-50 text-gray-900'
-    }`}>
+        <WelcomePopup 
+  isOpen={showWelcomePopup}
+  onClose={() => setShowWelcomePopup(false)}
+  isDarkMode={isDarkMode}
+/>
+        <div className={`min-h-screen transition-colors duration-200 ${
+              isDarkMode ? 'bg-[#1B2327] text-white' : 'bg-gray-50 text-gray-900'
+            }`}>
        <div className='flex items-center justify-between p-5'>
           
        <h1 className={`text-2xl ${
-      isDarkMode ? 'bg-gray-900/70' : 'bg-white/70'
+      isDarkMode ? 'bg-[#1B2327]' : 'bg-white/70'
     } font-bold`}>Emoji Buy</h1>
 
 <WalletMultiButton
               style={{
-                width: "110px",
+                // width: "110px",
                 fontSize: "9px",
                 height: "40px",
                 background: "#A9F605",
@@ -585,7 +492,7 @@ const MobileNav = () => (
    
       {/* Header */}
       <div className={`${
-      isDarkMode ? 'bg-gray-900/70' : 'bg-white/70'
+      isDarkMode ? 'bg-[#1B2327]' : 'bg-white/70'
     } hidden fixed top-0 left-0 right-0 z-40 p-4 backdrop-blur-md bg-opacity-80 
         border-b border-gray-700 md:flex justify-between items-center`}>
         <h1 className="text-2xl font-bold">Emoji Buy</h1>
@@ -605,14 +512,7 @@ const MobileNav = () => (
         {/* Desktop Controls */}
         <div className="hidden md:flex items-center gap-3">
     
-        <WalletMultiButton
-              style={{
-                background: "#A9F605",
-                color: "black",
-                borderRadius: "180px",
-              }}
-            /> 
-            
+     
           <div className="relative">
        
             <input
@@ -620,7 +520,7 @@ const MobileNav = () => (
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder="Search..."
-              className={`rounded-lg px-3 py-1.5 pl-9 w-40 ${
+              className={`rounded-lg px-3 py-1.5 pl-9 w-60 ${
                 isDarkMode ? 'bg-gray-800' : 'bg-white'
               }`}
             />
@@ -635,7 +535,15 @@ const MobileNav = () => (
           >
             <Filter size={18} />
           </button>
-
+          <WalletMultiButton
+              style={{
+                background: "#A9F605",
+                color: "black",
+                borderRadius: "180px",
+              }}
+            /> 
+            
+{/* 
           <button
             onClick={() => setIsDarkMode(!isDarkMode)}
             className={`p-1.5 rounded-lg ${
@@ -643,76 +551,98 @@ const MobileNav = () => (
             }`}
           >
             {isDarkMode ? <Sun size={18} /> : <Moon size={18} />}
-          </button>
+          </button> */}
 
 
-          <button
+          {/* <button
             onClick={() => setShowCreateModal(true)}
             className="bg-custom-green text-white hover:bg-purple-700 px-3 py-1.5 rounded-lg flex items-center gap-1"
           >
             <Plus size={18} />
             Add
-          </button>
+          </button> */}
         </div>
       </div>
-{showFilters && <FilterPanel />}
+{showFilters && (
+  <FilterPanel
+    sortBy={sortBy}
+    setSortBy={setSortBy}
+    showTop10Only={showTop10Only}
+    setShowTop10Only={setShowTop10Only}
+    isDarkMode={isDarkMode}
+    onClose={() => setShowFilters(false)}
+  />
+)}
 <div className="container mx-auto px-4 pt-10">
-          {isLoading ? (
-            <div className="text-center py-10">Loading...</div>
-          ) : (
-            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-4">
-              {filteredData.map((token , index) => (
-               <div
-  style={{ mixBlendMode: "darken" ,
-    // backgroundColor:"transparent"
-  }}
-               key={token.id || index}
-               onClick={() => {
-                 if (isSelectionMode) {
-                   toggleEmojiSelection({
-                     id: token.baseToken?.address || '',
-                     emoji: token?.info.imageUrl || '',
-                     marketCap: token.marketCap || 0,
-                     price: token.priceUsd || '',
-                     type: 'unknown',
-                     change24h: token.priceChange?.h24 || 0,
-                     xPosition: generateXPosition(token.baseToken?.address || '', 0, tokens.length)
-                   });
-                   setSelectedToken(token);
-                 } else {
-                   setSelectedToken(token);
-                   setShowBuyModal(true);
-                 }
-               }}
-               className={`relative 
-                w-24 h-24       // Small screens (default)
-                sm:w-32 sm:h-32 // Small screens and above
-                md:w-40 md:h-40 // Medium screens and above
- // Extra-large screens and above rounded-full p-2 ${
-                 isSelectionMode
-                   ? selectedEmojis.some(e => e.id === token.baseToken?.address)
-                     ? 'bg-custom-green/40' // Circle background for selected state
-                     : 'bg-red-500/40' // Red circle background for unselected state in selection mode
-                   : '' // No background when not in selection mode
-               } flex flex-col items-center justify-center`} // Centers items
-             >
-               <div className="flex flex-col items-center">
-                 <span className="text-4xl mb-2 flex justify-center items-center">
-                   <img className="w-8 h-8 md:w-12 md:h-12" src={token?.info?.imageUrl} alt="" />
-                 </span>
-                 <span className="text-xs text-gray-500 text-center">
-                   ${formatNumber(token.marketCap)}
-                 </span>
-                 <span className={`text-xs ${token.priceChange.h24 >= 0 ? 'text-green-500' : 'text-red-500'} text-center`}>
-                   {token.priceChange.h24.toFixed(2)}%
-                 </span>
-               </div>
-             </div>
-             
-              ))}
-            </div>
-          )}
-        </div>
+                {isLoading ? (
+                  <div className="text-center py-10">Loading...</div>
+                ) : (
+                  <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-4">
+                    {filteredData.map((token, index) => (
+                      <motion.div
+                        key={token.id || index}
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.3, delay: index * 0.05 }}
+                        onClick={() => {
+                          const now = Date.now();
+                          const lastTap = lastTapTime[token.baseToken?.address] || 0;
+                          
+                          if (now - lastTap < 300) { // Double tap detected
+                            setSelectedToken(token);
+                            setShowBuyModal(true);
+                          } else if (isSelectionMode) {
+                            toggleEmojiSelection({
+                              id: token.baseToken?.address || '',
+                              emoji: token?.info.imageUrl || '',
+                              icon: token.baseToken?.symbol || '',
+                              marketCap: token.marketCap || 0,
+                              price: token.priceUsd || '',
+                              type: 'unknown',
+                              change24h: token.priceChange?.h24 || 0,
+                              xPosition: generateXPosition(token.baseToken?.address || '', 0, tokens.length)
+                            });
+                          }
+                          
+                          setLastTapTime(prev => ({
+                            ...prev,
+                            [token.baseToken?.address]: now
+                          }));
+                        }}
+                        className={`relative 
+                          w-28 h-28 sm:w-32 sm:h-32 md:w-40 md:h-40 
+                          rounded-lg p-2 
+                          ${isSelectionMode
+                            ? selectedEmojis.some(e => e.id === token.baseToken?.address)
+                              ? 'border-2 border-custom-green'
+                              : 'border-2 border-red-500'
+                            : ''
+                          } 
+                          hover:shadow-lg transition-all duration-300
+                          flex flex-col items-center justify-center`}
+                      >
+                        <div className="flex md:my-0 my-6  flex-col items-center">
+                          <motion.span 
+                            className="md:text-5xl text-3xl  mb-2 flex justify-center items-center"
+                            whileHover={{ rotate: [0, -10, 10, -10, 0] }}
+                            transition={{ duration: 0.5 }}
+                          >
+                            {token.baseToken?.symbol}
+                          </motion.span>
+                          <span className="text-xs text-gray-500 text-center">
+                            ${formatNumber(token.marketCap)}
+                          </span>
+                          <span className={`text-xs ${token.priceChange.h24 >= 0 ? 'text-green-500' : 'text-red-500'} text-center`}>
+                            {token.priceChange.h24.toFixed(2)}%
+                          </span>
+                        </div>
+                      </motion.div>
+                    ))}
+                  </div>
+                )}
+              </div>
 
         <Dialog open={showBuyModal} onOpenChange={setShowBuyModal}>
       <DialogContent className="max-w-xl md:max-h-[85%] max-h-[75%] flex flex-col">
@@ -726,11 +656,8 @@ const MobileNav = () => (
               <div className="text-center mb-6">
                 <span className="text-6xl mb-4 justify-center items-center flex">
                   
-                   <img 
-                     className="w-24 h-24 object-cover" 
-                     src={selectedToken?.info?.imageUrl} 
-                     alt="unknown" 
-                   />
+                {selectedToken.baseToken?.symbol}
+
                 </span>
                 <p className="text-xl font-medium mb-2">{selectedToken.price}</p>
               </div>
@@ -740,18 +667,18 @@ const MobileNav = () => (
                 isDarkMode={isDarkMode} 
               />
 
-              <div className='mt-6'>
+              {/* <div className='mt-6'>
                 <AmountInput  
                   isdarkmode={isDarkMode}   
                   value={buyQuantity}   
                   onChange={(value) => setBuyQuantity(value)} 
                 />
-              </div>
-              <SingleTokenSwapButton 
+              </div> */}
+              {/* <SingleTokenSwapButton 
   tokenAddress={selectedToken?.baseToken.address}
   solAmount={buyQuantity}  // Amount in SOL 
   isdarkmode={isDarkMode}
-/>
+/> */}
               {/* <button
                  onClick={() => SingleToken({ tokenaddress: selectedToken?.baseToken.address , amount: buyQuantity })}
 
@@ -763,38 +690,43 @@ const MobileNav = () => (
               </button> */}
 
               <div className="grid grid-cols-3 justify-center items-center gap-4 mt-5">
-                <button 
-                  className={`flex text-xs items-center py-2 px-1 border-solid border justify-center rounded-lg ${
+              <a target='_blank'   className={`flex text-xs items-center py-2 px-1 border-solid border justify-center rounded-lg ${
                     isDarkMode ? 'border-white' : 'border-black'
-                  }`}
+                  }`} href={selectedToken.url} >
+                <button 
+                 
                 >
-                  <a href={selectedToken.url} className="flex items-center">
+                  <a target='_blank'  href={selectedToken.url} className="flex items-center">
                     <ExternalLink className='mr-2' size={13} />
                     DEX
                   </a>
                 </button>
-
-                <button 
-                  className={`flex text-xs items-center py-2 px-1 border-solid border justify-center rounded-lg ${
+                </a>
+                <a target='_blank'   className={`flex text-xs items-center py-2 px-1 border-solid border justify-center rounded-lg ${
                     isDarkMode ? 'border-white' : 'border-black'
-                  }`}
+                  }`} href={selectedToken?.info?.socials[0]?.url} >
+                <button 
+                 
                 >
-                  <a href={selectedToken?.info?.socials[0]?.url} className="flex items-center">
+                  <a target='_blank'  href={selectedToken?.info?.socials[0]?.url} className="flex items-center">
                     <Share2 className='mr-2' size={13} />
                     Social
                   </a>
+                 
                 </button>
-
-                <button 
-                  className={`flex text-xs items-center py-2 px-1 border-solid border justify-center rounded-lg ${
+                </a>
+                <a  target='_blank' className={`flex text-xs items-center py-2 px-1 border-solid border justify-center rounded-lg ${
                     isDarkMode ? 'border-white' : 'border-black'
-                  }`}
+                  }`} href={selectedToken?.info?.websites[0]?.url} >
+                <button 
+                 
                 >
-                  <a href={selectedToken?.info?.websites[0]?.url} className="flex items-center">
+                  <a target='_blank'  href={selectedToken?.info?.websites[0]?.url} className="flex items-center">
                     <Squirrel className='mr-2' size={13} />
                     Website
                   </a>
                 </button>
+                </a>
               </div>
             </div>
           )}
@@ -832,9 +764,14 @@ const MobileNav = () => (
               const tokensPerEmoji = tokenPriceInSOL > 0 ? amountPerEmoji / tokenPriceInSOL : 0;
 
               return (
-                <div key={emoji.id || key} className={`rounded-lg text-center p-2  ${isDarkMode ? 'bg-gray-900 text-white' : 'bg-gray-100 text-black'}`}>
+                <div onClick={()=>{    console.log('emoji', emoji)
+                  console.log("selectedEmojis", selectedEmojis)
+                }} key={emoji.id || key} className={`rounded-lg text-center p-2  ${isDarkMode ? 'bg-gray-900 text-white' : 'bg-gray-100 text-black'}`}>
                   <span className="text-2xl flex justify-center items-center">
-                    <img className="w-10" src={emoji.emoji} alt="" />
+                    {/* <img className="w-10" src={emoji.emoji} alt="" />
+                     */}
+                {emoji.icon}
+                     {/* {emoji.emoji} */}
                   </span>
                   <p className="mt-2 text-xs text-gray-400">
                     {formatNumber(tokensPerEmoji)} 
@@ -873,15 +810,27 @@ const MobileNav = () => (
                 </DialogContent>
               </Dialog>
 
-              {selectedEmojis.length > 0  && isSelectionMode && (
-                <button
-                  onClick={() => setShowBulkBuyModal(true)}
-                  className="fixed bottom-20 right-4 z-50 px-6 py-3 bg-custom-green text-white rounded-full shadow-lg flex items-center gap-2"
-                >
-                  <ShoppingCart size={18} />
-                  Buy {selectedEmojis.length} Selected
-                </button>
-              )}
+              {selectedEmojis.length > 0 && isSelectionMode && (
+  <motion.button
+    initial={{ y: 100 }}
+    animate={{ y: 0 }}
+    whileHover={{ scale: 1.05 }}
+    whileTap={{ scale: 0.95 }}
+    onClick={() => setShowBulkBuyModal(true)}
+    className="
+      fixed bottom-20 
+      left-24 transform -translate-x-1/2
+      md:left-auto md:right-10 
+      z-50 px-6 py-3 bg-custom-green text-white 
+      rounded-full shadow-lg flex items-center gap-2
+      w-auto max-w-xs"
+  >
+    <ShoppingCart size={18} />
+    Buy {selectedEmojis.length} Selected
+  </motion.button>
+)}
+
+
 
       {/* Create Token Modal */}
       <CreateEmoji showCreateModal={showCreateModal} setShowCreateModal={setShowCreateModal} isDarkMode={isDarkMode}  />
