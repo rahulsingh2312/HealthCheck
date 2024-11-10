@@ -478,7 +478,7 @@ const MobileNav = () => (
       {!showMobileNav && !isSelectionMode &&  <div>  <button
                 onClick={() => {
                 setIsSelectionMode(!isSelectionMode)
-                } }className={` bottom-24 text-xs fixed md:hidden right-4 z-50 px-3 py-2 rounded-full ${
+                } }className={` bottom-24 left-4 text-xs fixed md:hidden  z-50 px-3 py-2 rounded-full ${
                   !isSelectionMode 
                     ? 'bg-custom-green text-white' 
                     : isDarkMode ? 'bg-gray-700' : 'bg-gray-200'
@@ -490,7 +490,7 @@ const MobileNav = () => (
               </div> }
               {!showMobileNav && isSelectionMode &&  <div>  <button
                 onClick={() => setIsSelectionMode(!isSelectionMode)}
-                className={` bottom-36 text-xs fixed md:hidden right-4 z-50 px-3 py-2 rounded-full ${
+                className={` bottom-36 left-4 text-xs fixed md:hidden  z-50 px-3 py-2 rounded-full ${
                   !isSelectionMode 
                     ? 'bg-custom-green text-white' 
                     : isDarkMode ? 'bg-gray-700' : 'bg-gray-200'
