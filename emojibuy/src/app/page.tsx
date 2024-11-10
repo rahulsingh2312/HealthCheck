@@ -20,6 +20,7 @@ import { motion } from 'framer-motion';
 
 
 import CreateEmoji from './CreateEmoji';
+import EmojiSearch from './EmojiSearch';
 import { WalletProvider } from '@solana/wallet-adapter-react';
 import SingleTokenSwapButton from './SingleTokenSwapButton';
 import { TipLinkWalletAdapter } from "@tiplink/wallet-adapter";
@@ -366,14 +367,20 @@ const MobileNav = () => (
     <div className="p-4 mt-4 space-y-6">
       {/* Search Bar */}
       <div className="relative flex gap-4">
-        <input
+        {/* <input
           type="text"
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           placeholder="Search emojis..."
           className="w-full rounded-lg px-4 py-2 pl-9 bg-gray-800 text-white"
-        />
-        <Search className="absolute  left-3 top-3 text-gray-400" size={16} />
+        /> */}
+        <div className='w-[460px]'>
+       <EmojiSearch 
+  searchTerm={searchTerm}
+  setSearchTerm={setSearchTerm}
+  isDarkMode={isDarkMode}
+/>
+</div>
         <button
           onClick={() => setShowFilters(!showFilters)}
           className="flex items-center justify-center gap-3 p-2 rounded-lg w-full bg-gray-800 text-white"
@@ -515,7 +522,7 @@ const MobileNav = () => (
      
           <div className="relative">
        
-            <input
+            {/* <input
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
@@ -523,8 +530,12 @@ const MobileNav = () => (
               className={`rounded-lg px-3 py-1.5 pl-9 w-60 ${
                 isDarkMode ? 'bg-gray-800' : 'bg-white'
               }`}
-            />
-            <Search className="absolute left-2 top-2 text-gray-400" size={16} />
+            /> */}
+            <EmojiSearch 
+  searchTerm={searchTerm}
+  setSearchTerm={setSearchTerm}
+  isDarkMode={isDarkMode}
+/>
           </div>
           
           <button 
