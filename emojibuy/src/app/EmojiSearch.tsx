@@ -13,7 +13,7 @@ const EmojiSearch: React.FC<EmojiSearchProps> = ({ searchTerm, setSearchTerm, is
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   
   const onEmojiClick = (emojiObject: { emoji: string; }) => {
-    setSearchTerm(prev => prev + emojiObject.emoji);
+    setSearchTerm(emojiObject.emoji);
     setShowEmojiPicker(false);
   };
 
@@ -23,6 +23,7 @@ const EmojiSearch: React.FC<EmojiSearchProps> = ({ searchTerm, setSearchTerm, is
         <input
           type="text"
           value={searchTerm}
+          
           onChange={(e) => setSearchTerm(e.target.value)}
           onFocus={() => setShowEmojiPicker(true)}
           placeholder="Search emojis..."
@@ -32,10 +33,14 @@ const EmojiSearch: React.FC<EmojiSearchProps> = ({ searchTerm, setSearchTerm, is
               : 'bg-white text-gray-900 placeholder-gray-500'
           } focus:outline-none focus:ring-2 focus:ring-custom-green`}
         />
+         <span className='font-bold absolute right-3 top-2 text-gray-400' onClick={() => setSearchTerm("")}>
+          X
+        </span>
         <Search 
           className="absolute left-3 top-3 text-gray-400" 
           size={16} 
         />
+       
       </div>
 
       <AnimatePresence>
