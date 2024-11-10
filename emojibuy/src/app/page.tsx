@@ -40,6 +40,7 @@ let bulkTokens:any ;
 // import data from './demo.json';
 import MarketInfo from './MarketInfo';  // Import MarketInfo component
 import AmountInput from './Amount';
+import TokenConfetti from './TokenConfetti';
 interface Token {
   id: string;
   emoji: string;
@@ -111,7 +112,8 @@ const [lastTapTime, setLastTapTime] = useState<{ [key: string]: number }>({});
     volume24h: 0
   });
   const [selectedToken, setSelectedToken] = useState<TokenDetails | null>(null);
- 
+  const [showConfetti, setShowConfetti] = useState(false);
+
 // Update the fetchHeliusData function to properly handle image URLs
 const fetchHeliusData = async (tokenId: any) => {
   try {
@@ -445,6 +447,10 @@ const MobileNav = () => (
   onClose={() => setShowWelcomePopup(false)}
   isDarkMode={isDarkMode}
 />
+<TokenConfetti 
+        symbol={selectedToken?.baseToken?.symbol || "🪙"} 
+        isActive={showConfetti} 
+      />
         <div className={`min-h-screen transition-colors duration-200 ${
               isDarkMode ? 'bg-[#1B2327] text-white' : 'bg-gray-50 text-gray-900'
             }`}>
@@ -603,6 +609,8 @@ const MobileNav = () => (
                           
                           if (now - lastTap < 300) { // Double tap detected
                             setSelectedToken(token);
+                            setShowConfetti(true);
+                            setTimeout(() => setShowConfetti(false), 3000);
                             setShowBuyModal(true);
                           } else if (isSelectionMode) {
                             toggleEmojiSelection({
@@ -640,7 +648,7 @@ const MobileNav = () => (
                             whileHover={{ rotate: [0, -10, 10, -10, 0] }}
                             transition={{ duration: 0.5 }}
                           >
-                            {token.baseToken?.symbol}
+                            {token.baseToken?.symbol?.replace(/^\$/g, '') || ''}
                           </motion.span>
                           <span className="text-xs text-gray-500 text-center">
                             ${formatNumber(token.marketCap)}

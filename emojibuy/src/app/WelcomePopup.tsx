@@ -21,7 +21,7 @@ const WelcomePopup: React.FC<WelcomePopupProps> = ({ isOpen, onClose, isDarkMode
           <div className="space-y-6">
             <div className="flex justify-center">
               <motion.div
-                animate={{ y: [0, -10, 0] }}
+                animate={{ y: [0, -20, 0] }}
                 transition={{ duration: 2, repeat: Infinity }}
                 className="text-4xl"
               >
@@ -29,11 +29,18 @@ const WelcomePopup: React.FC<WelcomePopupProps> = ({ isOpen, onClose, isDarkMode
               </motion.div>
             </div>
             
-            <h2 className="text-2xl font-bold">Welcome to EmojiBuy! ✨</h2>
+            <h2 className="text-2xl font-bold">Welcome to EmojiBuy ✨</h2>
             
             <div className="space-y-4">
               <div className="flex items-center justify-center gap-2 text-sm">
+              <motion.div
+                animate={{ x: [0, 3, 0] }}
+                transition={{ duration: 5, repeat: Infinity }}
+                className="text-4xl"
+              >
                 <MousePointer2 className="text-blue-500" size={20} />
+                
+              </motion.div>
                 <p>Tap to select tokens 👆</p>
               </div>
               
