@@ -11,10 +11,7 @@ import { createJupiterApiClient, QuoteResponse } from "@jup-ag/api";
 import { useWallet } from '@solana/wallet-adapter-react';
 
 const SOL_MINT = 'So11111111111111111111111111111111111111112';
-const connection = new Connection(
-  'https://mainnet.helius-rpc.com/?api-key=215399cd-1d50-4bdf-8637-021503ae6ef3',
-  "confirmed"
-);
+const connection = new Connection('https://api.mainnet-beta.solana.com');
 const jupiterQuoteApi = createJupiterApiClient();
 
 // Maximum size for a transaction batch (in bytes)
