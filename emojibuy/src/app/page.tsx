@@ -31,7 +31,7 @@ const wallets = [
   new TipLinkWalletAdapter({
     title: "Emoji Buy",
     clientId: "f7d3033a-a221-42e2-b8cb-0b73c1bc3c27",
-    theme: "light",
+    theme: "dark",
     hideDraggableWidget: false
   }),
 ];

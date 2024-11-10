@@ -1,13 +1,13 @@
-// @ts-nocheck 
 import React, { useState } from 'react';
 import { Line, Bar } from 'react-chartjs-2';
+import { LineChart, BarChart, Activity, ArrowUpDown } from 'lucide-react';
 import { 
   Chart as ChartJS, 
   CategoryScale, 
   LinearScale, 
   BarElement, 
   LineElement, 
-  PointElement, // Register this element
+  PointElement,
   Tooltip, 
   Legend 
 } from 'chart.js';
@@ -17,43 +17,49 @@ ChartJS.register(
   LinearScale, 
   BarElement, 
   LineElement, 
-  PointElement, // Register PointElement here
+  PointElement,
   Tooltip, 
   Legend
 );
 
-const formatNumber = (num: number) => {
+const formatNumber = (num: any) => {
+  if (typeof num !== 'number' || isNaN(num)) return 'N/A';
+
   if (num >= 1e9) return (num / 1e9).toFixed(1) + ' B';
   if (num >= 1e6) return (num / 1e6).toFixed(1) + ' M';
   if (num >= 1e3) return (num / 1e3).toFixed(1) + ' K';
-  return num?.toLocaleString();
+  
+  if (num < 0.001 && num > 0) {
+    const decimalPlaces = -Math.floor(Math.log10(num));
+    return (
+      <>
+        0.<sub>{decimalPlaces}</sub>{num.toFixed(decimalPlaces).slice(-2)}
+      </>
+    );
+  }
+  
+  return num.toLocaleString();
 };
 
+
+
 interface TokenDetailsTableProps {
-  selectedToken: {
-  };
+  selectedToken: any;
   isDarkMode: boolean;
 }
 
 const TokenDetailsTable: React.FC<TokenDetailsTableProps> = ({ selectedToken, isDarkMode }) => {
-  const [chartType, setChartType] = useState("priceChange"); // Default chart
+  const [chartType, setChartType] = useState("priceChange");
 
   if (!selectedToken) return null;
 
   const chartOptions = [
-    { value: "priceChange", label: "Price Change" },
-    { value: "volume", label: "Volume of Trades" },
-    { value: "transactions", label: "Transaction Counts" },
-    // { value: "liquidityMarketCap", label: "Liquidity vs Market Cap" },
+    { value: "priceChange", label: "Price", icon: LineChart },
+    { value: "volume", label: "Volume", icon: BarChart },
+    { value: "transactions", label: "Transactions", icon: Activity },
   ];
 
-  const handleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    setChartType(e.target.value);
-  };
-
-
   const getChartData = () => {
-    console.log(selectedToken);
     switch (chartType) {
       case "priceChange":
         return {
@@ -117,18 +123,6 @@ const TokenDetailsTable: React.FC<TokenDetailsTableProps> = ({ selectedToken, is
             },
           ],
         };
-      case "liquidityMarketCap":
-        return {
-          labels: ["Liquidity", "Market Cap"],
-          datasets: [
-            {
-              label: "USD",
-              data: [selectedToken.liquidity, selectedToken.marketCap],
-              backgroundColor: 'rgba(255, 206, 86, 0.6)',
-              borderColor: 'rgba(255, 206, 86, 1)',
-            },
-          ],
-        };
       default:
         return {
           labels: [],
@@ -146,16 +140,16 @@ const TokenDetailsTable: React.FC<TokenDetailsTableProps> = ({ selectedToken, is
         <div className="grid grid-cols-2 gap-3">
           <div className="flex justify-between">
             <span className="font-medium text-gray-600 dark:text-gray-300">Price:</span>
-            <span className="font-bold">{selectedToken.priceUsd} $</span>
+            <span className="font-bold">{formatNumber(Number(selectedToken.priceUsd))} $</span>
           </div>
           <div className="flex justify-between">
             <span className="font-medium text-gray-600 dark:text-gray-300">Market Cap:</span>
             <span className="font-bold">${formatNumber(selectedToken.marketCap)}</span>
-            </div>
+          </div>
           <div className="flex justify-between">
-            <span className="font-medium  text-gray-600 dark:text-gray-300">24h Volume:</span>
+            <span className="font-medium text-gray-600 dark:text-gray-300">24h Volume:</span>
             <span className="font-bold">${formatNumber(selectedToken.volume.h24)}</span>
-            </div>
+          </div>
           <div className="flex justify-between">
             <span className="font-medium text-gray-600 dark:text-gray-300">24h Change:</span>
             <span className={selectedToken.priceChange.h24 >= 0 ? 'text-green-500 font-bold' : 'text-red-500 font-bold'}>
@@ -164,32 +158,38 @@ const TokenDetailsTable: React.FC<TokenDetailsTableProps> = ({ selectedToken, is
           </div>
           <div className="flex justify-between">
             <span className="font-medium text-gray-600 dark:text-gray-300">Price:</span>
-            <span className="font-bold">{selectedToken.priceNative} SOL</span>
-
+            <span className="font-bold">{formatNumber(Number(selectedToken.priceNative))} SOL</span>
           </div>
           <div className="flex justify-between">
             <span className="font-medium text-gray-600 dark:text-gray-300">Liquidity:</span>
             <span className="font-[510]">${formatNumber(selectedToken?.liquidity?.usd)}</span>
-            </div>
+          </div>
         </div>
       </div>
 
       <div className="my-4">
-        <label className="block font-medium text-gray-600 dark:text-gray-300 mb-2">Select Chart Type:</label>
-        <select
-          value={chartType}
-          onChange={handleChange}
-          className="rounded-lg p-2 bg-white dark:bg-gray-700 text-sm"
-        >
-          {chartOptions.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
-            </option>
-          ))}
-        </select>
+        <div className="flex gap-2">
+          {chartOptions.map((option) => {
+            const Icon = option.icon;
+            return (
+              <button
+                key={option.value}
+                onClick={() => setChartType(option.value)}
+                className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-colors
+                  ${chartType === option.value 
+                    ? 'bg-[#A9F605] text-black' 
+                    : 'bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600'
+                  }`}
+              >
+                <Icon size={16} />
+                <span>{option.label}</span>
+              </button>
+            );
+          })}
+        </div>
       </div>
 
-      <div className="rounded-lg flex justify-center items-center bg-white dark:bg-gray-800">
+      <div className="rounded-lg flex justify-center items-center bg-white dark:bg-gray-800 p-4">
         {chartType === "liquidityMarketCap" ? (
           <Bar data={getChartData()} />
         ) : (
