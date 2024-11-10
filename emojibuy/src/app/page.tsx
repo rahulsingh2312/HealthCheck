@@ -104,6 +104,8 @@ const EmojiRace = () => {
   const [showTop10Only, setShowTop10Only] = useState(false);
   const [tokens, setTokens] = useState<TokenDetails[]>([]);
   const [showWelcomePopup, setShowWelcomePopup] = useState(true);
+  const [isOpen, setIsOpen] = useState(true);
+
 const [lastTapTime, setLastTapTime] = useState<{ [key: string]: number }>({});
   const [marketStats, setMarketStats] = useState({
     totalMarketCap: 0,
@@ -443,8 +445,8 @@ const MobileNav = () => (
       <TipLinkWalletAutoConnectV2 isReady query={new URLSearchParams(window.location.search)}>
         <WalletModalProvider>
         <WelcomePopup 
-  isOpen={showWelcomePopup}
-  onClose={() => setShowWelcomePopup(false)}
+  isOpen={isOpen}
+  onClose={() => setIsOpen(false)}
   isDarkMode={isDarkMode}
 />
 <TokenConfetti 
