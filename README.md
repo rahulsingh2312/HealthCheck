@@ -10,3 +10,6 @@ its like you all can trade emojis !
 i personally am gonna buy all of the `🤪` emojis bro . im so bullish on 🥰 aswell 
 
 next pump.fun is here its emojibuy.fun 
+
+
+# main branch is supposed to be revision-1
