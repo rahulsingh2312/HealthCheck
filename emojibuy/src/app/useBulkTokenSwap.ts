@@ -2,22 +2,17 @@ import React, { useState } from 'react';
 import { 
   Connection, 
   PublicKey, 
-  SystemProgram, 
-  TransactionMessage, 
   VersionedTransaction,
-  SendTransactionError
 } from '@solana/web3.js';
 import { createJupiterApiClient, QuoteResponse } from "@jup-ag/api";
 import { useWallet } from '@solana/wallet-adapter-react';
 
 const SOL_MINT = 'So11111111111111111111111111111111111111112';
-const connection = new Connection('https://mainnet.helius-rpc.com/?api-key=1c4915ef-e7f3-4cdb-b032-1a126a058ff8',"confirmed");
+const connection = new Connection('https://mainnet.helius-rpc.com/?api-key=1c4915ef-e7f3-4cdb-b032-1a126a058ff8', "confirmed");
 const jupiterQuoteApi = createJupiterApiClient();
 
-// Maximum size for a transaction batch (in bytes)
 const MAX_TRANSACTION_SIZE = 1232;
-const MAX_RETRIES = 3;
-const RETRY_DELAY_MS = 2000;
+const TRANSACTION_TIMEOUT_MS = 4500; // 45 seconds timeout
 
 interface TokenSwapInfo {
   id: string;
@@ -46,114 +41,78 @@ export const useBulkTokenSwap = () => {
   const [totalBatches, setTotalBatches] = useState(0);
 
   const getSwapQuotes = async (tokens: TokenSwapInfo[]) => {
-    try {
-      const quotes: QuoteResponse[] = [];
-      
-      for (const token of tokens) {
-        if (!PublicKey.isOnCurve(token.id)) {
-          throw new Error(`Invalid token address: ${token.id}`);
-        }
-
-        const amountInLamports = Math.floor(token.amount * 1000000000);
-        
-        const quoteParams = {
-          inputMint: SOL_MINT,
-          outputMint: token.id,
-          amount: amountInLamports,
-          slippageBps: 250,
-        };
-
-        const quote = await jupiterQuoteApi.quoteGet(quoteParams);
-        
-        if (!quote) {
-          throw new Error(`Failed to get quote for token ${token.id}`);
-        }
-
-        quotes.push(quote);
-      }
-
-      return quotes;
-    } catch (err) {
-      console.error('Quote fetch error:', err);
-      throw new Error('Failed to get swap quotes');
-    }
-  };
-
-  // const confirmTransaction = async (signature: string): Promise<boolean> => {
-  //   try {
-  //     const confirmation = await connection.confirmTransaction({
-  //       signature,
-  //       lastValidBlockHeight: await connection.getBlockHeight(),
-  //       blockhash: (await connection.getLatestBlockhash()).blockhash
-  //     }, 'confirmed');
-
-  //     if (confirmation.value.err) {
-  //       console.error(`Transaction failed: ${confirmation.value.err.toString()}`);
-  //       return false;
-  //     }
-
-  //     // Additional verification of transaction success
-  //     const txInfo = await connection.getTransaction(signature, {
-  //       maxSupportedTransactionVersion: 0,
-  //     });
-
-  //     if (!txInfo?.meta) {
-  //       console.error('Transaction info not found');
-  //       return false;
-  //     }
-
-  //     // Check if transaction was successful
-  //     if (txInfo.meta.err) {
-  //       console.error(`Transaction error: ${txInfo.meta.err.toString()}`);
-  //       return false;
-  //     }
-
-  //     return true;
-  //   } catch (err) {
-  //     console.error('Transaction confirmation error:', err);
-  //     return false;
-  //   }
-  // };
-  const confirmTransactionWithRetry = async (
-    signature: string, 
-    retries = MAX_RETRIES
-  ): Promise<boolean> => {
-    for (let attempt = 1; attempt <= retries; attempt++) {
-      try {
-        // Get fresh blockhash for each retry
-        const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('confirmed');
-        
-        const confirmation = await connection.confirmTransaction({
-          signature,
-          blockhash,
-          lastValidBlockHeight
-        }, 'confirmed');
-
-        if (confirmation.value.err) {
-          console.warn(`Transaction attempt ${attempt} failed`);
-          if (attempt === retries) return false;
-          await new Promise(resolve => setTimeout(resolve, RETRY_DELAY_MS));
-          continue;
-        }
-
-        // Additional verification
-        const txInfo = await connection.getTransaction(signature, {
-          maxSupportedTransactionVersion: 0,
-        });
-
-        return !txInfo?.meta?.err;
-      } catch (err) {
-        console.warn(`Confirmation attempt ${attempt} error:`, err);
-        if (attempt === retries) return false;
-        await new Promise(resolve => setTimeout(resolve, RETRY_DELAY_MS));
-      }
-    }
+    const quotes: QuoteResponse[] = [];
     
-    return false;
+    for (const token of tokens) {
+      if (!PublicKey.isOnCurve(token.id)) {
+        throw new Error(`Invalid token address: ${token.id}`);
+      }
+
+      const amountInLamports = Math.floor(token.amount * 1000000000);
+      
+      const quote = await jupiterQuoteApi.quoteGet({
+        inputMint: SOL_MINT,
+        outputMint: token.id,
+        amount: amountInLamports,
+        slippageBps: 250,
+      });
+      
+      if (!quote) {
+        throw new Error(`Failed to get quote for token ${token.id}`);
+      }
+
+      quotes.push(quote);
+    }
+
+    return quotes;
   };
 
+  const confirmTransactionWithTimeout = async (signature: string): Promise<boolean> => {
+    return new Promise((resolve) => {
+      const timeoutId = setTimeout(() => {
+        console.warn(`Transaction ${signature} timed out`);
+        resolve(false);
+      }, TRANSACTION_TIMEOUT_MS);
 
-  const createTransactionBatches = async (quotes: QuoteResponse[], tokens: TokenSwapInfo[]): Promise<TransactionBatch[]> => {
+      const checkConfirmation = async () => {
+        try {
+          const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('confirmed');
+          
+          const confirmation = await connection.confirmTransaction({
+            signature,
+            blockhash,
+            lastValidBlockHeight
+          }, 'confirmed');
+
+          clearTimeout(timeoutId);
+
+          if (confirmation.value.err) {
+            console.warn(`Transaction failed: ${confirmation.value.err}`);
+            resolve(false);
+            return;
+          }
+
+          // Additional verification
+          const txInfo = await connection.getTransaction(signature, {
+            maxSupportedTransactionVersion: 0,
+          });
+
+          resolve(!txInfo?.meta?.err);
+        } catch (err) {
+          clearTimeout(timeoutId);
+          console.warn('Transaction confirmation error:', err);
+          resolve(false);
+        }
+      };
+
+      checkConfirmation();
+    });
+  };
+
+  const createTransactionBatches = async (
+    quotes: QuoteResponse[], 
+    tokens: TokenSwapInfo[]
+  ): Promise<TransactionBatch[]> => {
     if (!publicKey) throw new Error('Wallet not connected');
 
     const batches: TransactionBatch[] = [];
@@ -172,17 +131,15 @@ export const useBulkTokenSwap = () => {
         },
       });
 
-      if (!swapResponse || !swapResponse.swapTransaction) {
+      if (!swapResponse?.swapTransaction) {
         throw new Error(`Failed to get swap transaction for token ${tokens[i].id}`);
       }
 
       const swapTransactionBuf = Buffer.from(swapResponse.swapTransaction, 'base64');
       const transaction = VersionedTransaction.deserialize(swapTransactionBuf);
       
-      // Calculate size of serialized transaction
       const transactionSize = transaction.serialize().length;
 
-      // If adding this transaction would exceed batch size limit, create new batch
       if (currentBatchSize + transactionSize > MAX_TRANSACTION_SIZE && currentBatch.transactions.length > 0) {
         batches.push(currentBatch);
         currentBatch = { transactions: [], tokens: [] };
@@ -194,7 +151,6 @@ export const useBulkTokenSwap = () => {
       currentBatchSize += transactionSize;
     }
 
-    // Add the last batch if it contains any transactions
     if (currentBatch.transactions.length > 0) {
       batches.push(currentBatch);
     }
@@ -205,12 +161,9 @@ export const useBulkTokenSwap = () => {
   const processTransactionBatch = async (batch: TransactionBatch): Promise<SwapResult[]> => {
     if (!signAllTransactions) throw new Error('Wallet not connected');
 
+    const signedTransactions = await signAllTransactions(batch.transactions);
     const results: SwapResult[] = [];
     
-    // Sign all transactions in the batch
-    const signedTransactions = await signAllTransactions(batch.transactions);
-    
-    // Process each signed transaction
     for (let i = 0; i < signedTransactions.length; i++) {
       try {
         const signature = await connection.sendRawTransaction(
@@ -222,8 +175,7 @@ export const useBulkTokenSwap = () => {
           }
         );
 
-        // Wait for confirmation with additional verification
-        const confirmed = await confirmTransactionWithRetry(signature);
+        const confirmed = await confirmTransactionWithTimeout(signature);
 
         results.push({
           signature,
@@ -238,7 +190,7 @@ export const useBulkTokenSwap = () => {
           signature: '',
           tokenId: batch.tokens[i].id,
           status: 'error',
-          error: err instanceof Error ? err.message : 'Unknown error occurred'
+          error: err instanceof Error ? err.message : 'Unknown error'
         });
       }
     }
@@ -257,32 +209,27 @@ export const useBulkTokenSwap = () => {
     setCurrentBatchIndex(0);
 
     try {
-      // Get all quotes first
       const quotes = await getSwapQuotes(tokens);
-      
-      // Create transaction batches
       const batches = await createTransactionBatches(quotes, tokens);
       setTotalBatches(batches.length);
 
       let allResults: SwapResult[] = [];
 
-      // Process each batch
       for (let i = 0; i < batches.length; i++) {
         setCurrentBatchIndex(i + 1);
         const batchResults = await processTransactionBatch(batches[i]);
         allResults = [...allResults, ...batchResults];
-        setSwapResults(allResults); // Update results after each batch
+        setSwapResults(allResults);
       }
 
       const failedSwaps = allResults.filter(r => r.status === 'error');
       if (failedSwaps.length > 0) {
-        setError(`${failedSwaps.length} swap(s) failed. Check swapResults for details.`);
+        setError(`${failedSwaps.length} swap(s) failed`);
       }
 
       return allResults;
 
     } catch (err) {
-      console.error('Bulk swap error:', err);
       const errorMessage = err instanceof Error ? err.message : 'Bulk swap failed';
       setError(errorMessage);
       throw err;
