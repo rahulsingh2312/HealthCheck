@@ -762,6 +762,7 @@ const MobileNav = () => (
                 <DialogContent className="sm:max-w-md">
                   <DialogHeader>
                     <DialogTitle>Bulk Buy Emojis</DialogTitle>
+                  
                   </DialogHeader>
                   <div className="p-6">
                     <div className="mb-6">
@@ -830,7 +831,9 @@ const MobileNav = () => (
   totalSolAmount={totalSolAmount}
                     isDarkMode={true} 
                     />
+                    
                   </div>
+                 
                 </DialogContent>
               </Dialog>
 

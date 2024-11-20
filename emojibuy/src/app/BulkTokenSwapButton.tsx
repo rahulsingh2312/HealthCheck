@@ -83,6 +83,7 @@ const BulkTokenSwapButton: React.FC<BulkTokenSwapButtonProps> = ({
   };
 
   return (
+    <div>
     <button
       onClick={handleBulkBuy}
       disabled={loading || connecting}
@@ -104,6 +105,15 @@ const BulkTokenSwapButton: React.FC<BulkTokenSwapButtonProps> = ({
       {(loading || connecting) && <Loader2 className="h-4 w-4 animate-spin" />}
       {getButtonText()}
     </button>
+    {loading && (
+        <div className="my-3 p-2 rounded-lg bg-yellow-100 text-yellow-800 text-sm">
+          <p>
+            Dont buy with too less atleast 0.1 or transaction will fail.
+            Solana has a max transaction size limit. You will need to sign each transaction individually. Bear with us during this process!
+          </p>
+        </div>
+      )}
+      </div>
   );
 };
 
