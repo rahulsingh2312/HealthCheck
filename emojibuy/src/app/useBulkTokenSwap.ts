@@ -123,20 +123,6 @@ export const useBulkTokenSwap = () => {
 
     for (let i = 0; i < quotes.length; i++) {
       const quote = quotes[i];
-
-      const referralAccountPubkey = new PublicKey('emjkRmFNY6awteciGjJ3WRDHgH95FWs8yg4RZ7HhsRn');
-      const tokenMint = tokens[i].id;
-      const mint = new PublicKey(tokenMint);
-
-      //creating fee account ATA for each token mints
-      const [feeAccount] = await PublicKey.findProgramAddressSync(
-        [
-          Buffer.from("referral_ata"),
-          referralAccountPubkey.toBuffer(),
-          mint.toBuffer(),
-        ],
-        new PublicKey("REFER4ZgmyYx9c6He5XfaTMiGfdLwRnkV4RPp9t9iF3")
-      );
       
       const swapResponse = await jupiterQuoteApi.swapPost({
         swapRequest: {
@@ -144,7 +130,6 @@ export const useBulkTokenSwap = () => {
           userPublicKey: publicKey.toString(),
           dynamicComputeUnitLimit: true,
           prioritizationFeeLamports: 'auto',
-          feeAccount:feeAccount.toString()
         },
       });
 
