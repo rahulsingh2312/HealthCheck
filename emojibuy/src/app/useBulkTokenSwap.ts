@@ -59,6 +59,7 @@ export const useBulkTokenSwap = () => {
           outputMint: token.id,
           amount: amountInLamports,
           slippageBps: 150,
+          platformFeeBps:250
         };
 
         const quote = await jupiterQuoteApi.quoteGet(quoteParams);
