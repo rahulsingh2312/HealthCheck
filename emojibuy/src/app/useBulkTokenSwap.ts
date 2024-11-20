@@ -58,6 +58,7 @@ export const useBulkTokenSwap = () => {
           inputMint: SOL_MINT,
           outputMint: token.id,
           amount: amountInLamports,
+          slippageBps: 150,
         };
 
         const quote = await jupiterQuoteApi.quoteGet(quoteParams);
