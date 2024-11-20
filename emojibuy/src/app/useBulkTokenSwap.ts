@@ -154,7 +154,6 @@ export const useBulkTokenSwap = () => {
       inputMint: SOL_MINT,
       outputMint: token.id,
       amount: amountInLamports,
-      slippageBps: 1800,
     });
     
     if (!quote) {
@@ -178,13 +177,7 @@ export const useBulkTokenSwap = () => {
           quoteResponse: quote,
           userPublicKey: publicKey.toString(),
           dynamicComputeUnitLimit: true,
-          prioritizationFeeLamports: {
-            priorityLevelWithMaxLamports: {
-              maxLamports: 4000000,
-              global: false,
-              priorityLevel: "veryHigh"
-            }
-          }
+      prioritizationFeeLamports: 'auto',
         },
       });
 
