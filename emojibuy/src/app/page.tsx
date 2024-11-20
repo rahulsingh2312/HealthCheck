@@ -198,6 +198,7 @@ const fetchHeliusData = async (tokenId: any) => {
     try {
       setIsLoading(true);
 
+      console.log(TOKEN_CONFIG)
       // Fetch data for each token individually and store promises
       const tokenDataPromises = TOKEN_CONFIG.map(async (token) => {
         try {
@@ -225,6 +226,8 @@ const fetchHeliusData = async (tokenId: any) => {
 
     // Await all promises and combine the results into a single array
     const tokensData = await Promise.all(tokenDataPromises);
+    console.log('Tokens data:', tokensData);
+    
     const combinedData = tokensData.flatMap(data => data.pairs || []);
 
     console.log('Combined data:', combinedData);
