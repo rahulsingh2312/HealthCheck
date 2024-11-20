@@ -16,6 +16,8 @@ const jupiterQuoteApi = createJupiterApiClient();
 
 // Maximum size for a transaction batch (in bytes)
 const MAX_TRANSACTION_SIZE = 1232;
+const MAX_RETRIES = 3;
+const RETRY_DELAY_MS = 2000;
 
 interface TokenSwapInfo {
   id: string;
@@ -58,7 +60,7 @@ export const useBulkTokenSwap = () => {
           inputMint: SOL_MINT,
           outputMint: token.id,
           amount: amountInLamports,
-          slippageBps: 150,
+          slippageBps: 250,
         };
 
         const quote = await jupiterQuoteApi.quoteGet(quoteParams);
@@ -77,41 +79,79 @@ export const useBulkTokenSwap = () => {
     }
   };
 
-  const confirmTransaction = async (signature: string): Promise<boolean> => {
-    try {
-      const confirmation = await connection.confirmTransaction({
-        signature,
-        lastValidBlockHeight: await connection.getBlockHeight(),
-        blockhash: (await connection.getLatestBlockhash()).blockhash
-      }, 'confirmed');
+  // const confirmTransaction = async (signature: string): Promise<boolean> => {
+  //   try {
+  //     const confirmation = await connection.confirmTransaction({
+  //       signature,
+  //       lastValidBlockHeight: await connection.getBlockHeight(),
+  //       blockhash: (await connection.getLatestBlockhash()).blockhash
+  //     }, 'confirmed');
 
-      if (confirmation.value.err) {
-        console.error(`Transaction failed: ${confirmation.value.err.toString()}`);
-        return false;
+  //     if (confirmation.value.err) {
+  //       console.error(`Transaction failed: ${confirmation.value.err.toString()}`);
+  //       return false;
+  //     }
+
+  //     // Additional verification of transaction success
+  //     const txInfo = await connection.getTransaction(signature, {
+  //       maxSupportedTransactionVersion: 0,
+  //     });
+
+  //     if (!txInfo?.meta) {
+  //       console.error('Transaction info not found');
+  //       return false;
+  //     }
+
+  //     // Check if transaction was successful
+  //     if (txInfo.meta.err) {
+  //       console.error(`Transaction error: ${txInfo.meta.err.toString()}`);
+  //       return false;
+  //     }
+
+  //     return true;
+  //   } catch (err) {
+  //     console.error('Transaction confirmation error:', err);
+  //     return false;
+  //   }
+  // };
+  const confirmTransactionWithRetry = async (
+    signature: string, 
+    retries = MAX_RETRIES
+  ): Promise<boolean> => {
+    for (let attempt = 1; attempt <= retries; attempt++) {
+      try {
+        // Get fresh blockhash for each retry
+        const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('confirmed');
+        
+        const confirmation = await connection.confirmTransaction({
+          signature,
+          blockhash,
+          lastValidBlockHeight
+        }, 'confirmed');
+
+        if (confirmation.value.err) {
+          console.warn(`Transaction attempt ${attempt} failed`);
+          if (attempt === retries) return false;
+          await new Promise(resolve => setTimeout(resolve, RETRY_DELAY_MS));
+          continue;
+        }
+
+        // Additional verification
+        const txInfo = await connection.getTransaction(signature, {
+          maxSupportedTransactionVersion: 0,
+        });
+
+        return !txInfo?.meta?.err;
+      } catch (err) {
+        console.warn(`Confirmation attempt ${attempt} error:`, err);
+        if (attempt === retries) return false;
+        await new Promise(resolve => setTimeout(resolve, RETRY_DELAY_MS));
       }
-
-      // Additional verification of transaction success
-      const txInfo = await connection.getTransaction(signature, {
-        maxSupportedTransactionVersion: 0,
-      });
-
-      if (!txInfo?.meta) {
-        console.error('Transaction info not found');
-        return false;
-      }
-
-      // Check if transaction was successful
-      if (txInfo.meta.err) {
-        console.error(`Transaction error: ${txInfo.meta.err.toString()}`);
-        return false;
-      }
-
-      return true;
-    } catch (err) {
-      console.error('Transaction confirmation error:', err);
-      return false;
     }
+    
+    return false;
   };
+
 
   const createTransactionBatches = async (quotes: QuoteResponse[], tokens: TokenSwapInfo[]): Promise<TransactionBatch[]> => {
     if (!publicKey) throw new Error('Wallet not connected');
@@ -183,7 +223,7 @@ export const useBulkTokenSwap = () => {
         );
 
         // Wait for confirmation with additional verification
-        const confirmed = await confirmTransaction(signature);
+        const confirmed = await confirmTransactionWithRetry(signature);
 
         results.push({
           signature,
