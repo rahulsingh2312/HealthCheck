@@ -54,7 +54,7 @@ export const useBulkTokenSwap = () => {
         inputMint: SOL_MINT,
         outputMint: token.id,
         amount: amountInLamports,
-        slippageBps: 250,
+        slippageBps: 900,
       });
       
       if (!quote) {
