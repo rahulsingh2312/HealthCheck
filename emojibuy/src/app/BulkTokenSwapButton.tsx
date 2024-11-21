@@ -16,7 +16,7 @@ const BulkTokenSwapButton: React.FC<BulkTokenSwapButtonProps> = ({
   onSwapSuccess,
   totalSolAmount,
 }) => {
-  const { executeBulkSwap, loading, error } = useBulkTokenSwap();
+  const { executeBulkSwap, loading, error, currentTokenIndex, totalTokens } = useBulkTokenSwap();
   const { select, wallets, connecting, connected, publicKey } = useWallet();
   const [tokens, setTokens] = useState<Array<{ id: string; emoji: string; amount: number }>>([]);
 
@@ -24,7 +24,7 @@ const BulkTokenSwapButton: React.FC<BulkTokenSwapButtonProps> = ({
     const phantomWallet = wallets.find(wallet =>
       wallet.adapter.name.toLowerCase().includes('phantom')
     );
-    
+
     if (phantomWallet) {
       select(phantomWallet.adapter.name);
     } else if (wallets.length > 0) {
@@ -59,11 +59,11 @@ const BulkTokenSwapButton: React.FC<BulkTokenSwapButtonProps> = ({
 
     try {
       await executeBulkSwap(tokensToSwap);
-      
+
       if (onSwapSuccess) {
         onSwapSuccess();
       }
-      
+
       alert('Emojis bought successfully!');
     } catch (err) {
       console.error("Bulk swap failed:", err);
@@ -84,37 +84,41 @@ const BulkTokenSwapButton: React.FC<BulkTokenSwapButtonProps> = ({
 
   return (
     <div>
-    <button
-      onClick={handleBulkBuy}
-      disabled={loading || connecting}
-      className={`
-        w-full 
-        ${isDarkMode ? 'text-white' : 'text-white border'}
-        ${loading || connecting ? 'bg-gray-500' : 'bg-custom-green hover:bg-green-700'}
-        py-3 
-        rounded-lg 
-        font-medium 
-        transition-colors 
-        flex 
-        items-center 
-        justify-center 
-        gap-2
-        ${(loading || connecting) ? 'opacity-50 cursor-not-allowed' : 'hover:bg-green-600'}
-      `}
-    >
-      {(loading || connecting) && <Loader2 className="h-4 w-4 animate-spin" />}
-      {getButtonText()}
-    </button>
-    {loading && (
+      <button
+        onClick={handleBulkBuy}
+        disabled={loading || connecting}
+        className={`
+          w-full 
+          ${isDarkMode ? 'text-white' : 'text-white border'}
+          ${loading || connecting ? 'bg-gray-500' : 'bg-custom-green hover:bg-green-700'}
+          py-3 
+          rounded-lg 
+          font-medium 
+          transition-colors 
+          flex 
+          items-center 
+          justify-center 
+          gap-2
+          ${(loading || connecting) ? 'opacity-50 cursor-not-allowed' : 'hover:bg-green-600'}
+        `}
+      >
+        {(loading || connecting) && <Loader2 className="h-4 w-4 animate-spin" />}
+        {getButtonText()}
+      </button>
+      {loading && (
         <div className="my-3 p-6 rounded-lg bg-yellow-100 text-yellow-800 text-sm">
           <p>
-            It might take a minute to process the transaction, and automatically fails if exceeds the time limit so try again blame it on solana.
-           <br/>
-            Solana has a max transaction size & time limit. 
+            Processing transaction {currentTokenIndex} of {totalTokens}.<br />
+            It might take a minute. If the transaction fails, you can retry.
           </p>
         </div>
       )}
-      </div>
+      {error && (
+        <div className="my-3 p-4 rounded-lg bg-red-100 text-red-800 text-sm">
+          <p>{error}</p>
+        </div>
+      )}
+    </div>
   );
 };
 

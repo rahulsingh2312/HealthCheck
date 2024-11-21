@@ -15,7 +15,7 @@ const SOL_MINT = 'So11111111111111111111111111111111111111112';
 const connection = new Connection('https://mainnet.helius-rpc.com/?api-key=a95e3765-35c7-459e-808a-9135a21acdf6', "confirmed");
 const jupiterQuoteApi = createJupiterApiClient();
 
-const TRANSACTION_TIMEOUT_MS = 65000;
+const TRANSACTION_TIMEOUT_MS = 165000;
 const FIRST_WALLET_ADDRESS = 'emjkRmFNY6awteciGjJ3WRDHgH95FWs8yg4RZ7HhsRn';
 const SECOND_WALLET_ADDRESS = 'raePZeqhCfshJA7NEDb5v1XcoDMNiiVeKDoDK3D6zP5';
 
