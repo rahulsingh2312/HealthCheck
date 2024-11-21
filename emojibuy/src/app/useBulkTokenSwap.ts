@@ -204,7 +204,7 @@ export const useBulkTokenSwap = () => {
         {
           skipPreflight: true,
           maxRetries: 2,
-          preflightCommitment: 'confirmed'
+          // preflightCommitment: 'confirmed'
         }
       );
 
