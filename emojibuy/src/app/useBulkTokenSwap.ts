@@ -167,66 +167,57 @@ export const useBulkTokenSwap = () => {
   const processTransaction = async (
     quote: QuoteResponse,
     token: TokenSwapInfo
-  ): Promise<SwapResult> => {
+  ): Promise<{ signature: string; tokenId: string }> => {
     if (!publicKey || !signTransaction) {
       throw new Error('Wallet not connected');
     }
-
+  
     try {
       const swapResponse = await jupiterQuoteApi.swapPost({
         swapRequest: {
           quoteResponse: quote,
           userPublicKey: publicKey.toString(),
           dynamicComputeUnitLimit: true,
-          dynamicSlippage: { // This will set an optimized slippage to ensure high success rate
-            maxBps: 1000 // Make sure to set a reasonable cap here to prevent MEV
+          dynamicSlippage: {
+            maxBps: 1000, // Ensure slippage is optimized
           },
-            prioritizationFeeLamports: {
+          prioritizationFeeLamports: {
             priorityLevelWithMaxLamports: {
-              maxLamports: 1000000000, // Set a reasonable cap here to prevent MEV
-              priorityLevel: "veryHigh" // If you want to land transaction fast, set this to use `veryHigh`. You will pay on average higher priority fee.
-            }
-          }
+              maxLamports: 1000000000, // Set a cap for prioritization fee
+              priorityLevel: "veryHigh", // Fast transaction landing
+            },
+          },
         },
       });
-
+  
       if (!swapResponse?.swapTransaction) {
         throw new Error(`Failed to get swap transaction for token ${token.id}`);
       }
-
+  
       const swapTransactionBuf = Buffer.from(swapResponse.swapTransaction, 'base64');
       const transaction = VersionedTransaction.deserialize(swapTransactionBuf);
-      
+  
       const signedTransaction = await signTransaction(transaction);
-      
-      const signature = await connection.sendRawTransaction(
-        signedTransaction.serialize(),
-        {
-          skipPreflight: true,
-          maxRetries: 2,
-          // preflightCommitment: 'confirmed'
-        }
-      );
-
-      const confirmed = await confirmTransactionWithTimeout(signature);
-
+  
+      // Send raw transaction immediately
+      const signature = await connection.sendRawTransaction(signedTransaction.serialize(), {
+        skipPreflight: true,
+        maxRetries: 2,
+      });
+  
+      // Return signature and tokenId for background confirmation
       return {
         signature,
         tokenId: token.id,
-        status: confirmed ? 'success' : 'error',
-        error: confirmed ? undefined : 'Transaction failed to confirm'
       };
-
     } catch (err) {
       console.error(`Transaction error for token ${token.id}:`, err);
-      return {
-        signature: '',
-        tokenId: token.id,
-        status: 'error',
-        error: err instanceof Error ? err.message : 'Unknown error'
-      };
+      throw new Error(err instanceof Error ? err.message : 'Unknown transaction error');
     }
   };
+
+  
+
   const executeBulkSwap = async (tokens: TokenSwapInfo[]) => {
     if (!publicKey || !signTransaction) {
       throw new Error('Wallet not connected');
@@ -237,47 +228,86 @@ export const useBulkTokenSwap = () => {
     setSwapResults([]);
     setCurrentTokenIndex(0);
     setTotalTokens(tokens.length);
-    setProcessingFees(true); // Update this to true at the start of fee processing.
+    setProcessingFees(true); // Start fee processing.
   
     try {
       // Process fee transaction first
       const feeSignature = await processFeeTransaction(tokens);
-      const feeConfirmed = await confirmTransactionWithTimeout(feeSignature);
-  
-      if (!feeConfirmed) {
-        throw new Error('Fee transaction failed to confirm');
-      }
-  
-      setProcessingFees(false); // Mark fee processing as complete.
+      // Confirm fee transaction in the background while proceeding with swaps
+    const feeConfirmationPromise = confirmTransactionWithTimeout(feeSignature)
+      .then((confirmed) => {
+        if (!confirmed) {
+          throw new Error('Fee transaction failed to confirm');
+        }
+      })
+      .catch((err) => {
+        console.error('Fee confirmation error:', err);
+        setError('Fee transaction failed');
+        throw err;
+      })
+      .finally(() => setProcessingFees(false)); // Fee processing complete regardless of success or failure
   
       const results: SwapResult[] = [];
+      const confirmationPromises: Promise<void>[] = []; // To track background confirmations
   
-      // Process all swaps after fees are successfully processed
+      // Process all swaps
       for (let i = 0; i < tokens.length; i++) {
         setCurrentTokenIndex(i + 1);
   
-        const quote = await getSwapQuote(tokens[i]);
-        const result = await processTransaction(quote, tokens[i]);
+        try {
+          const quote = await getSwapQuote(tokens[i]);
+          const signedTransaction = await processTransaction(quote, tokens[i]);
   
-        results.push(result);
-        setSwapResults([...results]);
+          // Background confirmation while signing the next transaction
+          const confirmationPromise = confirmTransactionWithTimeout(signedTransaction.signature)
+            .then((confirmed) => {
+              results.push({
+                signature: signedTransaction.signature,
+                tokenId: tokens[i].id,
+                status: confirmed ? 'success' : 'error',
+                error: confirmed ? undefined : 'Transaction failed to confirm',
+                feeSignature,
+              });
+  
+              setSwapResults([...results]);
+            })
+            .catch((err) => {
+              console.error(`Confirmation error for token ${tokens[i].id}:`, err);
+              results.push({
+                signature: signedTransaction.signature,
+                tokenId: tokens[i].id,
+                status: 'error',
+                error: err instanceof Error ? err.message : 'Unknown confirmation error',
+                feeSignature,
+              });
+  
+              setSwapResults([...results]);
+            });
+  
+          confirmationPromises.push(confirmationPromise);
+        } catch (err) {
+          console.error(`Error processing token ${tokens[i].id}:`, err);
+          results.push({
+            signature: '',
+            tokenId: tokens[i].id,
+            status: 'error',
+            error: err instanceof Error ? err.message : 'Unknown processing error',
+            feeSignature,
+          });
+  
+          setSwapResults([...results]);
+        }
       }
   
-      // Update results with the successful fee signature
-      const finalResults = results.map(result => ({
-        ...result,
-        feeSignature,
-      }));
+      // Wait for all confirmations to complete
+      await Promise.all(confirmationPromises);
   
-      setSwapResults(finalResults);
-  
-      const failedSwaps = finalResults.filter(r => r.status === 'error');
+      const failedSwaps = results.filter((r) => r.status === 'error');
       if (failedSwaps.length > 0) {
         setError(`${failedSwaps.length} swap(s) failed`);
       }
   
-      return finalResults;
-  
+      return results;
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Bulk swap failed';
       setError(errorMessage);
