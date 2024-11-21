@@ -11,7 +11,8 @@ import { createJupiterApiClient, QuoteResponse } from "@jup-ag/api";
 import { useWallet } from '@solana/wallet-adapter-react';
 
 const SOL_MINT = 'So11111111111111111111111111111111111111112';
-const connection = new Connection('https://mainnet.helius-rpc.com/?api-key=1c4915ef-e7f3-4cdb-b032-1a126a058ff8', "confirmed");
+// rahulsingh@gmail rpc
+const connection = new Connection('https://mainnet.helius-rpc.com/?api-key=a95e3765-35c7-459e-808a-9135a21acdf6', "confirmed");
 const jupiterQuoteApi = createJupiterApiClient();
 
 const TRANSACTION_TIMEOUT_MS = 15500;
@@ -95,7 +96,7 @@ export const useBulkTokenSwap = () => {
       connection,
       rawTransaction,
       {
-        skipPreflight: false,
+        skipPreflight: true,
         preflightCommitment: 'confirmed',
         maxRetries: 3,
       }
@@ -193,7 +194,7 @@ export const useBulkTokenSwap = () => {
       const signature = await connection.sendRawTransaction(
         signedTransaction.serialize(),
         {
-          skipPreflight: false,
+          skipPreflight: true,
           maxRetries: 2,
           preflightCommitment: 'confirmed'
         }
