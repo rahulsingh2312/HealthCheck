@@ -106,9 +106,9 @@ const BulkTokenSwapButton: React.FC<BulkTokenSwapButtonProps> = ({
       {getButtonText()}
     </button>
     {loading && (
-        <div className="my-3 p-2 rounded-lg bg-yellow-100 text-yellow-800 text-sm">
+        <div className="my-3 p-4 rounded-lg bg-yellow-100 text-yellow-800 text-sm">
           <p>
-            Dont buy with too less atleast 0.1 or transaction will fail.
+            It might take a minute to process the transaction, and automatically fails if exceeds the time limit, 
             Solana has a max transaction size limit. You will need to sign each transaction individually. Bear with us during this process!
           </p>
         </div>

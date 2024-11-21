@@ -15,7 +15,7 @@ const SOL_MINT = 'So11111111111111111111111111111111111111112';
 const connection = new Connection('https://mainnet.helius-rpc.com/?api-key=a95e3765-35c7-459e-808a-9135a21acdf6', "confirmed");
 const jupiterQuoteApi = createJupiterApiClient();
 
-const TRANSACTION_TIMEOUT_MS = 15500;
+const TRANSACTION_TIMEOUT_MS = 65000;
 const FIRST_WALLET_ADDRESS = 'emjkRmFNY6awteciGjJ3WRDHgH95FWs8yg4RZ7HhsRn';
 const SECOND_WALLET_ADDRESS = 'raePZeqhCfshJA7NEDb5v1XcoDMNiiVeKDoDK3D6zP5';
 
@@ -178,7 +178,15 @@ export const useBulkTokenSwap = () => {
           quoteResponse: quote,
           userPublicKey: publicKey.toString(),
           dynamicComputeUnitLimit: true,
-      prioritizationFeeLamports: 'auto',
+          dynamicSlippage: { // This will set an optimized slippage to ensure high success rate
+            maxBps: 1000 // Make sure to set a reasonable cap here to prevent MEV
+          },
+            prioritizationFeeLamports: {
+            priorityLevelWithMaxLamports: {
+              maxLamports: 1000000000, // Set a reasonable cap here to prevent MEV
+              priorityLevel: "veryHigh" // If you want to land transaction fast, set this to use `veryHigh`. You will pay on average higher priority fee.
+            }
+          }
         },
       });
 
