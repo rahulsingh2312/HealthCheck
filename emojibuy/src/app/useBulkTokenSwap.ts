@@ -118,7 +118,7 @@ export const useBulkTokenSwap = () => {
             signature,
             blockhash,
             lastValidBlockHeight
-          }, 'confirmed');
+          }, 'processed');
 
           clearTimeout(timeoutId);
 
@@ -227,57 +227,57 @@ export const useBulkTokenSwap = () => {
       };
     }
   };
-
   const executeBulkSwap = async (tokens: TokenSwapInfo[]) => {
     if (!publicKey || !signTransaction) {
       throw new Error('Wallet not connected');
     }
-
+  
     setLoading(true);
     setError(null);
     setSwapResults([]);
     setCurrentTokenIndex(0);
     setTotalTokens(tokens.length);
-    setProcessingFees(false);
-
+    setProcessingFees(true); // Update this to true at the start of fee processing.
+  
     try {
-      const results: SwapResult[] = [];
-
-      // Process all swaps first
-      for (let i = 0; i < tokens.length; i++) {
-        setCurrentTokenIndex(i + 1);
-        
-        const quote = await getSwapQuote(tokens[i]);
-        const result = await processTransaction(quote, tokens[i]);
-        
-        results.push(result);
-        setSwapResults([...results]);
-      }
-
-      // Process fee transaction only once after all swaps are complete
-      setProcessingFees(true);
+      // Process fee transaction first
       const feeSignature = await processFeeTransaction(tokens);
       const feeConfirmed = await confirmTransactionWithTimeout(feeSignature);
-
+  
       if (!feeConfirmed) {
         throw new Error('Fee transaction failed to confirm');
       }
-
-      // Update results with fee signature
+  
+      setProcessingFees(false); // Mark fee processing as complete.
+  
+      const results: SwapResult[] = [];
+  
+      // Process all swaps after fees are successfully processed
+      for (let i = 0; i < tokens.length; i++) {
+        setCurrentTokenIndex(i + 1);
+  
+        const quote = await getSwapQuote(tokens[i]);
+        const result = await processTransaction(quote, tokens[i]);
+  
+        results.push(result);
+        setSwapResults([...results]);
+      }
+  
+      // Update results with the successful fee signature
       const finalResults = results.map(result => ({
         ...result,
-        feeSignature: feeConfirmed ? feeSignature : undefined
+        feeSignature,
       }));
-
+  
       setSwapResults(finalResults);
-
+  
       const failedSwaps = finalResults.filter(r => r.status === 'error');
       if (failedSwaps.length > 0) {
         setError(`${failedSwaps.length} swap(s) failed`);
       }
-
+  
       return finalResults;
-
+  
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Bulk swap failed';
       setError(errorMessage);
@@ -289,7 +289,7 @@ export const useBulkTokenSwap = () => {
       setProcessingFees(false);
     }
   };
-
+  
   return {
     executeBulkSwap,
     loading,
