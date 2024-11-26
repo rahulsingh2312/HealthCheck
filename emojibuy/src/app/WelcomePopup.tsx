@@ -83,9 +83,9 @@ const WelcomePopup: React.FC<WelcomePopupProps> = ({ isOpen, onClose, isDarkMode
 
                 <button
                   onClick={handleClose}
-                  className="w-full bg-green-500 hover:bg-green-600 
+                  className="w-full bg-green-500 
                     font-bold text-white py-2 rounded-lg 
-                    transition-colors duration-200"
+                    "
                 >
                   Let's go! 🎮
                 </button>
