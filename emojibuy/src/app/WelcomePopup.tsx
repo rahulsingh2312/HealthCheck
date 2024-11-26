@@ -11,14 +11,9 @@ interface WelcomePopupProps {
 
 const WelcomePopup: React.FC<WelcomePopupProps> = ({ isOpen, onClose, isDarkMode }) => {
   // Ensure clean close with a proper handler
-  const handleClose = () => {
-    if (typeof onClose === 'function') {
-      onClose();
-    }
-  };
 
   return (
-    <Dialog open={isOpen} onOpenChange={handleClose}>
+    <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-sm p-0 overflow-hidden">
       <div className="space-y-6">
         <AnimatePresence mode="wait">
@@ -48,7 +43,7 @@ const WelcomePopup: React.FC<WelcomePopupProps> = ({ isOpen, onClose, isDarkMode
           )}
         </AnimatePresence>
 
-                <h2 className="text-2xl font-bold">Welcome to EmojiBuy ✨</h2>
+                <h2 className="text-2xl flex justify-center items-center font-bold">Welcome to EmojiBuy ✨</h2>
 
                 <div className="space-y-4">
                   <div 
@@ -80,8 +75,8 @@ const WelcomePopup: React.FC<WelcomePopupProps> = ({ isOpen, onClose, isDarkMode
 
                 <div
 
-                  onClick={handleClose}
-                  className="w-full flex justify-center items-center cursor-pointer bg-green-500 
+                  onClick={()=>onClose()}
+                  className="w-full flex max-w-[90%] mx-auto justify-center items-center cursor-pointer bg-green-500 
                     font-bold text-white py-2 rounded-lg 
                     "
                 >
