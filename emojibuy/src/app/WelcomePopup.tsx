@@ -81,16 +81,14 @@ const WelcomePopup: React.FC<WelcomePopupProps> = ({ isOpen, onClose, isDarkMode
                   </motion.div>
                 </div>
 
-                <motion.button
+                <button
                   onClick={handleClose}
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
                   className="w-full bg-green-500 hover:bg-green-600 
                     font-bold text-white py-2 rounded-lg 
                     transition-colors duration-200"
                 >
                   Let's go! 🎮
-                </motion.button>
+                </button>
               </div>
             </motion.div>
           )}
