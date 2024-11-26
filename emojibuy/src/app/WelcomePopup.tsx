@@ -11,7 +11,7 @@ interface WelcomePopupProps {
 
 const WelcomePopup: React.FC<WelcomePopupProps> = ({ isOpen, onClose, isDarkMode }) => {
   const [buttonEnabled, setButtonEnabled] = useState(false);
-  const [countdown, setCountdown] = useState(5);
+  const [countdown, setCountdown] = useState(3);
 
   useEffect(() => {
     if (isOpen) {
