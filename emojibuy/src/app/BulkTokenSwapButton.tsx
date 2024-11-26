@@ -64,7 +64,7 @@ const BulkTokenSwapButton: React.FC<BulkTokenSwapButtonProps> = ({
         onSwapSuccess();
       }
 
-      alert('Emojis bought successfully!');
+      // alert('Emojis bought successfully!');
     } catch (err) {
       console.error("Bulk swap failed:", err);
       if (!connected) {

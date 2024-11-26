@@ -4,6 +4,7 @@ import {
   Search, Filter, Plus, Sun, Moon, ShoppingCart, Share2, ExternalLink, Squirrel, Send, PawPrint, Menu, X, MousePointer2
 } from 'lucide-react';
 import WelcomePopup from './WelcomePopup';
+import SuccessModal from './SuccessModal';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
@@ -19,7 +20,7 @@ const formatNumber = (num: number) => {
 import { motion } from 'framer-motion';
 import { driver } from 'driver.js';
 import 'driver.js/dist/driver.css';
-
+import EasterEgg from './EasterEgg';
 import CreateEmoji from './CreateEmoji';
 import EmojiSearch from './EmojiSearch';
 import { WalletProvider } from '@solana/wallet-adapter-react';
@@ -109,6 +110,8 @@ const EmojiRace = () => {
   const [showWelcomePopup, setShowWelcomePopup] = useState(true);
   const [isOpen, setIsOpen] = useState(true);
 
+  const [successModal, setSuccessModal] = useState(false);
+
 const [lastTapTime, setLastTapTime] = useState<{ [key: string]: number }>({});
   const [marketStats, setMarketStats] = useState({
     totalMarketCap: 0,
@@ -118,6 +121,7 @@ const [lastTapTime, setLastTapTime] = useState<{ [key: string]: number }>({});
   });
   const [selectedToken, setSelectedToken] = useState<TokenDetails | null>(null);
   const [showConfetti, setShowConfetti] = useState(false);
+  const [showEasterConfetti, setShowEasterConfetti] = useState(false);
 
 // Update the fetchHeliusData function to properly handle image URLs
 const fetchHeliusData = async (tokenId: any) => {
@@ -197,7 +201,8 @@ const fetchHeliusData = async (tokenId: any) => {
 };
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  
+
+
   const fetchTokenData = async () => {
     try {
       setIsLoading(true);
@@ -307,7 +312,7 @@ useEffect(() => {
   
   fetchTokenPrices();
 }, [selectedEmojis]);
-
+  console.log('selectedEmojis', selectedEmojis);  
 const sortTokens = (tokensToSort: TokenDetails[]) => {
   return [...tokensToSort].sort((a, b) => {
     switch (sortBy) {
@@ -525,6 +530,13 @@ const MobileNav = () => (
         symbol={selectedToken?.baseToken?.symbol || "🪙"} 
         isActive={showConfetti} 
       />
+
+
+      <EasterEgg 
+  symbols={selectedEmojis.map(emoji => emoji.icon)} 
+  isActive={showEasterConfetti} 
+  audioUrl="/chipichapa.mp3" 
+/>
         <div className={`min-h-screen transition-colors duration-200 ${
               isDarkMode ? 'bg-[#1B2327] text-white' : 'bg-gray-50 text-gray-900'
             }`}>
@@ -533,6 +545,26 @@ const MobileNav = () => (
        <h1 className={`text-2xl ${
       isDarkMode ? 'bg-[#1B2327]' : 'bg-white/70'
     } font-bold`}>Emoji Buy</h1>
+    {/* <button onClick={() => {
+      setShowBulkBuyModal(false);
+      setSelectedEmojis([]);
+
+      setTimeout(() => {
+        setShowConfetti(true);
+    
+        // Optional: Programmatic audio play with user gesture
+        const audio = new Audio('/chipichapa.mp3');
+        audio.play().catch(error => {
+          console.error('Audio play failed:', error);
+        });
+    
+        // Hide confetti after 5 seconds
+        setTimeout(() => {
+          setShowConfetti(false);
+        }, 5000);
+      }, 100);
+      
+    }}  > check</button> */}
 
 <WalletMultiButton
               style={{
@@ -896,18 +928,35 @@ const MobileNav = () => (
                     </button> */}
 
                     <BulkTokenSwapButton 
-    onSwapSuccess={() => {
-      setShowBulkBuyModal(false);
-      setSelectedEmojis([]);
-      setIsSelectionMode(false);
-    }}
+  onSwapSuccess={() => {
+    setShowBulkBuyModal(false);
+    setSuccessModal(true);
+    
+    setTimeout(() => {
+      setShowEasterConfetti(true);
+  
+      // Optional: Programmatic audio play with user gesture
+      const audio = new Audio('/chipichapa.mp3');
+      audio.play().catch(error => {
+        console.error('Audio play failed:', error);
+      });
+  
+      // Hide confetti after 5 seconds
+      setTimeout(() => {
+        setShowEasterConfetti(false);
+        setSelectedEmojis([]);
+      }, 5000);
+    }, 100);
+  }}
   selectedEmojis={selectedEmojis} 
+  
   totalSolAmount={totalSolAmount}
-                    isDarkMode={true} 
-                    />
-                    
+  isDarkMode={true} 
+/>
+                     
                   </div>
                  
+                
                 </DialogContent>
               </Dialog>
 
@@ -932,7 +981,7 @@ const MobileNav = () => (
 )}
 
 
-
+<SuccessModal isOpen={successModal} onClose={() => setSuccessModal(false)} />
       {/* Create Token Modal */}
       <CreateEmoji showCreateModal={showCreateModal} setShowCreateModal={setShowCreateModal} isDarkMode={isDarkMode}  />
       <MarketInfo marketCap={formatNumber(marketStats.totalMarketCap)} topgain={marketStats.topGainer} gainerPercentage={marketStats.topGainerPercentage.toFixed(2)} />
