@@ -17,7 +17,8 @@ const formatNumber = (num: number) => {
   return num?.toLocaleString();
 };
 import { motion } from 'framer-motion';
-
+import { driver } from 'driver.js';
+import 'driver.js/dist/driver.css';
 
 import CreateEmoji from './CreateEmoji';
 import EmojiSearch from './EmojiSearch';
@@ -86,6 +87,8 @@ interface TokenDetails {
 
 const EmojiRace = () => {
   const [isDarkMode, setIsDarkMode] = useState(true);
+  const [driverInitialized, setDriverInitialized] = useState(false);
+
   const [selectedEmoji, setSelectedEmoji] = useState<Token | null>(null);
   const [selectedEmojis, setSelectedEmojis] = useState<Token[]>([]);
   const [isSelectionMode, setIsSelectionMode] = useState(true);
@@ -194,6 +197,7 @@ const fetchHeliusData = async (tokenId: any) => {
 };
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  
   const fetchTokenData = async () => {
     try {
       setIsLoading(true);
@@ -439,7 +443,72 @@ const MobileNav = () => (
   useEffect(() => {
     document.documentElement.classList.toggle('dark', isDarkMode);
   }, [isDarkMode]);
+  // Initialize Driver.js for emoji selection guide
+  useEffect(() => {
+    if (!driverInitialized && filteredData.length > 0 && !isOpen) {
 
+      const driverObj = driver({
+        popoverClass: "driverjs-theme",
+        stagePadding: 4,
+        nextBtnText: '👉🏻',
+  prevBtnText: '👈🏻',
+  doneBtnText: '✅ 👍🏻',
+        showProgress: true,
+        steps: [
+          { element: '.emoji-grid', popover: { title: 'Emoji Overview', description: '👆🏻👆🏻 Double-tap an emoji to view details .', side: "left", align: 'end' }},
+          { element: '.emoji-grid2', popover: { title: 'Buy together', description: '👆🏻 select multiple emojis so you can buy together', side: "bottom", align: 'end' }},
+          // { element: 'code .line:nth-child(2)', popover: { title: 'Importing CSS', description: 'Import the CSS which gives you the default styling for popover and overlay.', side: "bottom", align: 'start' }},
+          // { element: 'code .line:nth-child(4) span:nth-child(7)', popover: { title: 'Create Driver', description: 'Simply call the driver function to create a driver.js instance', side: "left", align: 'start' }},
+          // { element: 'code .line:nth-child(18)', popover: { title: 'Start Tour', description: 'Call the drive method to start the tour and your tour will be started.', side: "top", align: 'start' }},
+          // { element: 'a[href="/docs/configuration"]', popover: { title: 'More Configuration', description: 'Look at this page for all the configuration options you can pass.', side: "right", align: 'start' }},
+          // { popover: { title: 'Happy Coding', description: 'And that is all, go ahead and start adding tours to your applications.' } }
+        ]
+        // steps: [
+        //   {
+        //     element: '.emoji-grid',
+        //     popover: {
+        //       title: 'Emoji Selection',
+        //       description: '👆🏻👆🏻 Double-tap an emoji to view details ',
+        //       side: "bottom", 
+        //       align: 'center'
+        //     }
+        //   },
+        //   {
+        //     element: '.emoji-grid2',
+        //     popover: {
+        //       title: 'Emoji Selection',
+        //       description: '👆🏻 select multiple emojis for buy together',
+        //       side: "top", 
+        //       align: 'center'
+        //     }
+        //   }
+        // ]
+      });
+
+      // Show the guide after a short delay
+      const timer = setTimeout(() => {
+        driverObj.drive();
+        setDriverInitialized(true);
+      }, 1000);
+
+      return () => clearTimeout(timer);
+    }
+  }, [filteredData, driverInitialized]);
+
+  // Enhanced token confetti to handle multiple tokens
+  // const MultiTokenConfetti = ({ tokens : Token }) => {
+  //   return (
+  //     <>
+  //       {tokens.map((token, index) => (
+  //         <TokenConfetti 
+  //           key={token.id || index}
+  //           symbol={token.icon || "🪙"} 
+  //           isActive={showConfetti} 
+  //         />
+  //       ))}
+  //     </>
+  //   );
+  // };
 
 
   return (
@@ -599,7 +668,7 @@ const MobileNav = () => (
                 {isLoading ? (
                   <div className="text-center py-10">Loading...</div>
                 ) : (
-                  <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-4">
+                  <div className=" grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-4">
                     {filteredData.map((token, index) => (
                       <motion.div
                         key={token.id || index}
@@ -637,7 +706,12 @@ const MobileNav = () => (
                         }}
                         className={`relative 
                           w-28 h-28 sm:w-32 sm:h-32 md:w-40 md:h-40 
-                          rounded-lg p-2 
+                          rounded-lg p-2  ${index == 10 ?"md:emoji-grid2":""}
+
+                          ${index == 5 ?"md:emoji-grid":""}
+                          ${index == 4 ?"emoji-grid2":""}
+
+                          ${index == 7 ?"emoji-grid":""}
                           ${isSelectionMode
                             ? selectedEmojis.some(e => e.id === token.baseToken?.address)
                               ? 'border-2 border-custom-green'

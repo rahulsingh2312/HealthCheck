@@ -11,11 +11,9 @@ import { createJupiterApiClient, QuoteResponse } from "@jup-ag/api";
 import { useWallet } from '@solana/wallet-adapter-react';
 
 const SOL_MINT = 'So11111111111111111111111111111111111111112';
-// rahulsingh@gmail rpc
 const connection = new Connection('https://mainnet.helius-rpc.com/?api-key=a95e3765-35c7-459e-808a-9135a21acdf6', "confirmed");
 const jupiterQuoteApi = createJupiterApiClient();
 
-const TRANSACTION_TIMEOUT_MS = 165000;
 const FIRST_WALLET_ADDRESS = 'emjkRmFNY6awteciGjJ3WRDHgH95FWs8yg4RZ7HhsRn';
 const SECOND_WALLET_ADDRESS = 'raePZeqhCfshJA7NEDb5v1XcoDMNiiVeKDoDK3D6zP5';
 
@@ -76,8 +74,7 @@ export const useBulkTokenSwap = () => {
         fromPubkey: publicKey,
         toPubkey: new PublicKey(FIRST_WALLET_ADDRESS),
         lamports: fees.firstWalletFee,
-      })
-      ,
+      }),
       SystemProgram.transfer({
         fromPubkey: publicKey,
         toPubkey: new PublicKey(SECOND_WALLET_ADDRESS),
@@ -96,52 +93,43 @@ export const useBulkTokenSwap = () => {
       connection,
       rawTransaction,
       {
-        skipPreflight: true,
+        skipPreflight: false,
         preflightCommitment: 'confirmed',
-        maxRetries: 3,
+        maxRetries: 50, // Aggressive retries
       }
     );
   };
 
-  const confirmTransactionWithTimeout = async (signature: string): Promise<boolean> => {
-    return new Promise((resolve) => {
-      const timeoutId = setTimeout(() => {
-        console.warn(`Transaction ${signature} timed out`);
-        resolve(false);
-      }, TRANSACTION_TIMEOUT_MS);
+  const aggressiveTransactionConfirmation = async (signature: string, maxAttempts = 100): Promise<boolean> => {
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('confirmed');
+        
+        const confirmation = await connection.confirmTransaction({
+          signature,
+          blockhash,
+          lastValidBlockHeight
+        }, 'confirmed');
 
-      const checkConfirmation = async () => {
-        try {
-          const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('confirmed');
-          
-          const confirmation = await connection.confirmTransaction({
-            signature,
-            blockhash,
-            lastValidBlockHeight
-          }, 'processed');
-
-          clearTimeout(timeoutId);
-
-          if (confirmation.value.err) {
-            console.warn(`Transaction failed: ${confirmation.value.err}`);
-            resolve(false);
-            return;
-          }
-
+        if (confirmation.value.err === null) {
           const txInfo = await connection.getTransaction(signature, {
             maxSupportedTransactionVersion: 0,
           });
 
-          resolve(!txInfo?.meta?.err);
-        } catch (err) {
-          clearTimeout(timeoutId);
-          console.warn('Transaction confirmation error:', err);
-          resolve(false);
+          return !txInfo?.meta?.err;
         }
-      };
 
-      checkConfirmation();
-    });
+        // If transaction failed, wait a bit before retrying
+        await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+      } catch (err) {
+        console.warn(`Confirmation attempt ${attempt} failed:`, err);
+        
+        // Wait progressively longer between retries
+        await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+      }
+    }
+
+    return false;
   };
 
   const getSwapQuote = async (token: TokenSwapInfo): Promise<QuoteResponse> => {
@@ -179,12 +167,12 @@ export const useBulkTokenSwap = () => {
           userPublicKey: publicKey.toString(),
           dynamicComputeUnitLimit: true,
           dynamicSlippage: {
-            maxBps: 1000, // Ensure slippage is optimized
+            maxBps: 10000, 
           },
           prioritizationFeeLamports: {
             priorityLevelWithMaxLamports: {
-              maxLamports: 1000000000, // Set a cap for prioritization fee
-              priorityLevel: "veryHigh", // Fast transaction landing
+              maxLamports: 100000000,
+          priorityLevel: "veryHigh" 
             },
           },
         },
@@ -199,13 +187,11 @@ export const useBulkTokenSwap = () => {
   
       const signedTransaction = await signTransaction(transaction);
   
-      // Send raw transaction immediately
       const signature = await connection.sendRawTransaction(signedTransaction.serialize(), {
-        skipPreflight: true,
-        maxRetries: 2,
+        skipPreflight: false,
+        maxRetries: 50, // Aggressive retries
       });
   
-      // Return signature and tokenId for background confirmation
       return {
         signature,
         tokenId: token.id,
@@ -215,8 +201,6 @@ export const useBulkTokenSwap = () => {
       throw new Error(err instanceof Error ? err.message : 'Unknown transaction error');
     }
   };
-
-  
 
   const executeBulkSwap = async (tokens: TokenSwapInfo[]) => {
     if (!publicKey || !signTransaction) {
@@ -228,29 +212,24 @@ export const useBulkTokenSwap = () => {
     setSwapResults([]);
     setCurrentTokenIndex(0);
     setTotalTokens(tokens.length);
-    setProcessingFees(true); // Start fee processing.
+    setProcessingFees(true);
   
     try {
-      // Process fee transaction first
+      // Process fee transaction with aggressive retries
       const feeSignature = await processFeeTransaction(tokens);
-      // Confirm fee transaction in the background while proceeding with swaps
-    const feeConfirmationPromise = confirmTransactionWithTimeout(feeSignature)
-      .then((confirmed) => {
-        if (!confirmed) {
-          throw new Error('Fee transaction failed to confirm');
-        }
-      })
-      .catch((err) => {
-        console.error('Fee confirmation error:', err);
-        setError('Fee transaction failed');
-        throw err;
-      })
-      .finally(() => setProcessingFees(false)); // Fee processing complete regardless of success or failure
+      
+      // Confirm fee transaction aggressively
+      const feeConfirmed = await aggressiveTransactionConfirmation(feeSignature);
+      
+      if (!feeConfirmed) {
+        throw new Error('Fee transaction persistently failed');
+      }
+      setProcessingFees(false);
   
       const results: SwapResult[] = [];
-      const confirmationPromises: Promise<void>[] = []; // To track background confirmations
+      const confirmationPromises: Promise<void>[] = [];
   
-      // Process all swaps
+      // Process all swaps with maximum possible confirmation attempts
       for (let i = 0; i < tokens.length; i++) {
         setCurrentTokenIndex(i + 1);
   
@@ -258,14 +237,13 @@ export const useBulkTokenSwap = () => {
           const quote = await getSwapQuote(tokens[i]);
           const signedTransaction = await processTransaction(quote, tokens[i]);
   
-          // Background confirmation while signing the next transaction
-          const confirmationPromise = confirmTransactionWithTimeout(signedTransaction.signature)
+          const confirmationPromise = aggressiveTransactionConfirmation(signedTransaction.signature)
             .then((confirmed) => {
               results.push({
                 signature: signedTransaction.signature,
                 tokenId: tokens[i].id,
                 status: confirmed ? 'success' : 'error',
-                error: confirmed ? undefined : 'Transaction failed to confirm',
+                error: confirmed ? undefined : 'Transaction persistently failed',
                 feeSignature,
               });
   
