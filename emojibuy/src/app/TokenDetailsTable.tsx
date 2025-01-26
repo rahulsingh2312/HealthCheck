@@ -152,8 +152,8 @@ const TokenDetailsTable: React.FC<TokenDetailsTableProps> = ({ selectedToken, is
           </div>
           <div className="flex justify-between">
             <span className="font-medium text-gray-600 dark:text-gray-300">24h Change:</span>
-            <span className={selectedToken.priceChange.h24 >= 0 ? 'text-green-500 font-bold' : 'text-red-500 font-bold'}>
-              {selectedToken.priceChange.h24.toFixed(2)}%
+            <span className={selectedToken?.priceChange?.h24 >= 0 ? 'text-green-500 font-bold' : 'text-red-500 font-bold'}>
+              {selectedToken?.priceChange?.h24?.toFixed(2)}%
             </span>
           </div>
           <div className="flex justify-between">

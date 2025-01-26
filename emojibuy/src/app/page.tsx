@@ -700,7 +700,7 @@ const MobileNav = () => (
                 {isLoading ? (
                   <div className="text-center py-10">Loading...</div>
                 ) : (
-                  <div className=" grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-4">
+                  <div className="pb-20 grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-4">
                     {filteredData.map((token, index) => (
                       <motion.div
                         key={token.id || index}
@@ -764,8 +764,8 @@ const MobileNav = () => (
                           <span className="text-xs text-gray-500 text-center">
                             ${formatNumber(token.marketCap)}
                           </span>
-                          <span className={`text-xs ${token.priceChange.h24 >= 0 ? 'text-green-500' : 'text-red-500'} text-center`}>
-                            {token.priceChange.h24.toFixed(2)}%
+                          <span className={`text-xs ${token.priceChange?.h24 >= 0 ? 'text-green-500' : 'text-red-500'} text-center`}>
+                            {token.priceChange.h24?.toFixed(2)}%
                           </span>
                         </div>
                       </motion.div>
